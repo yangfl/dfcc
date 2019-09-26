@@ -1,161 +1,63 @@
-#include <getopt.h>
-#include <fcntl.h>
-#include <libgen.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
-#include <exception.h>
+#include <glib.h>
 
-#include "macro.h"
-#include "client.h"
-#include "server.h"
+#include <macro.h>
 
-#include "dfcc.h"
+#include "client/client.h"
+#include "server/server.h"
+#include "config/config.h"
+#include "version.h"
 
 
-static void usage (const char *progname) {
-  printf("usage: %s [options]\n\n", progname);
-  printf(
-"options:\n"
-"blah\n"
-);
+extern char **environ;
+
+
+static void show_version () {
+  printf("%s %s\n", DFCC_NAME, DFCC_VERSION);
 }
-
-
-static void show_version (const char *progname) {
-  printf("%s %s\n",
-          progname,
-          DFCC_VERSION);
-}
-
-
-static bool is_symlinked (const char *progname) {
-  char *executable_filename = realpath(progname, NULL);
-  if unlikely (executable_filename == NULL) {
-    handle_error("realpath");
-  }
-  char *called_filename = strdup(progname);
-  if unlikely (called_filename == NULL) {
-    handle_error("strdup");
-  }
-  bool symlinked = strcmp(basename(executable_filename), basename(called_filename)) != 0;
-  free(executable_filename);
-  free(called_filename);
-  return symlinked;
-}
-
-
-const struct option long_options[] = {
-  {"server",  no_argument,       0,  'S'},
-  {"port",  required_argument,       0,  'p'},
-  {"foreground",  no_argument,       0,  'f'},
-  {"debug",  no_argument,       0,  'd'},
-  {"version",  no_argument,       0,  'v'},
-  {"help",  no_argument,       0,  'h'},
-  {0,         0,                 0,  0 }
-};
 
 
 int main (int argc, char *argv[]) {
-  Quick;
-  return 0;
+  if (g_getenv(DFCC_LOOP_DETECTION_ENV) != NULL) {
+    g_printerr("Recursive call detected!\n");
+    return 255;
+  }
 
-  bool symlinked = is_symlinked(argv[0]);
-  bool server_mode = false;
-  unsigned short port = DFCC_PORT;
-  bool foreground = false;
-  bool debug = false;
+  int ret;
 
-  int wrapper_argc = argc;
+  struct Config config;
+  should (Config_init(
+    &config, argc, (const char **) argv, (const char **) environ) == 0
+  ) otherwise return 255;
 
-  if (symlinked) {
-    for (wrapper_argc--; wrapper_argc > 1; wrapper_argc--) {
-      if (strcmp(argv[wrapper_argc], "--") == 0) {
-        break;
-      }
+  if (config.show_version) {
+    show_version();
+    return EXIT_SUCCESS;
+  }
+
+  if (config.debug) {
+    g_setenv("G_MESSAGES_DEBUG", "all", TRUE);
+  }
+
+  // a
+  if (config.foreground) {
+    should (daemon(1, 0) == 0) otherwise {
+      g_printerr("Daemonization failed\n");
+      return EXIT_FAILURE;
     }
   }
 
-  while (1) {
-    int option_index = 0;
-
-    int c = getopt_long(wrapper_argc, argv, "-Sp:fdvh", long_options, &option_index);
-    if (c == -1) {
-      break;
-    }
-    if (c == 1) {
-      optind--;
-      break;
-    }
-
-    switch (c) {
-      case 0:
-        printf("option %s", long_options[option_index].name);
-        if (optarg)
-           printf(" with arg %s", optarg);
-        printf("\n");
-        break;
-
-      case 'S':
-        server_mode = true;
-        break;
-
-      case 'p':
-        port = atoi(optarg);
-        break;
-
-      case 'f':
-        foreground = true;
-        break;
-
-      case 'd':
-        debug = true;
-        break;
-
-      case 'v':
-        show_version(argv[0]);
-        return EXIT_SUCCESS;
-
-      case 'h':
-        usage(argv[0]);
-        return EXIT_SUCCESS;
-
-      default:
-        printf("?? getopt returned character code 0%o ??\n", c);
-    }
-  }
-
-  if (server_mode) {
-    do_server(port);
+  if (config.server_mode) {
+    g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Server mode");
+    ret = Server_start(&config);
   } else {
-    int cc_argc;
-    if (symlinked) {
-      cc_argc = argc - wrapper_argc;
-    } else {
-      cc_argc = argc - optind;
-    }
-
-    char **cc_argv = malloc(sizeof(char *) * cc_argc);
-    if unlikely (cc_argv == NULL) {
-      handle_error("malloc");
-    }
-
-    if (symlinked) {
-      cc_argv[0] = argv[0];
-      for (int i = 1; i < cc_argc; i++) {
-        cc_argv[i] = argv[wrapper_argc + i];
-      }
-    } else {
-      for (int i = 0; i < cc_argc; i++) {
-        cc_argv[i] = argv[optind + i];
-      }
-    }
-
-    do_client(cc_argc, cc_argv);
+    g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Client mode");
+    ret = Client_start(&config);
   }
 
-  return EXIT_SUCCESS;
+  Config_destroy(&config);
+  return ret == 0 ? EXIT_SUCCESS : ret;
 }
-
