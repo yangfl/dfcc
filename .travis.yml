@@ -12,7 +12,7 @@ before_install:
         - sudo ldconfig
 
 install:
-        - sudo apt install cmake make gcc libgio2.0-cil-dev libsoup2.4-cil-dev libsoup2.4-dev libxxhash-dev
+        - sudo apt install cmake make gcc libgio2.0-cil-dev libsoup2.4-cil-dev libsoup2.4-dev
 
 script:
         - make -j$(nproc)
