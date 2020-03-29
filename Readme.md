@@ -8,7 +8,9 @@
 
 ## dependencies:
 
-	glib gio2 soup2 xxhash
+	glib gio2 soup2 xxhash 
+
+Notice: `xxhash` may can not found in some of OS software source. It could be compile&install manual [xxhash](https://github.com/Cyan4973/xxHash)
 
 install: __Debian command__ (example)
 
