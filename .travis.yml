@@ -8,8 +8,8 @@ before_install:
         - git clone https://github.com/Cyan4973/xxHash
         - cd xxHash
         - make -j$(nproc)
-        - make install
-        - ldconfig
+        - sudo make install
+        - sudo ldconfig
 
 install:
         - sudo apt install cmake make gcc libgio2.0-cil-dev libsoup2.4-cil-dev libsoup2.4-dev libxxhash-dev
