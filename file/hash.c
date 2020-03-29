@@ -14,8 +14,8 @@
 
 extern inline char *FileHash_to_string (struct FileHash *hash, char *s);
 extern inline int FileHash_init_copy (
-    struct FileHash *hash, struct FileHash *orig);
-extern inline struct FileHash *FileHash_new_copy (struct FileHash *hash);
+    struct FileHash *hash, const struct FileHash *orig);
+extern inline struct FileHash *FileHash_new_copy (const struct FileHash *hash);
 extern inline int FileHash_init_from_string (struct FileHash *hash, const char *s);
 extern inline int FileHash_init_from_buf (
     struct FileHash *hash, const void* buf, size_t size);

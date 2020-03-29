@@ -43,7 +43,7 @@ OBJS := $(SOURCES:.c=.o)
 PREREQUISITES := $(SOURCES:.c=.d)
 
 OUT := out
-EXE := $(OUT)/a.out
+EXE := $(OUT)/dfcc
 
 
 .PHONY: all
@@ -62,7 +62,7 @@ clean:
 
 $(EXE): $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
-	ln -sf a.out $(OUT)/b.out
+	ln -sf dfcc $(OUT)/cc
 
 # hookfs
 .PHONY: hookfs/hookfs.so

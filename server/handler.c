@@ -16,8 +16,21 @@
 #include "job.h"
 #include "session.h"
 
+/**
+ * @addtogroup ServerHandler
+ * @{
+ */
 
-void Server_rpc_compile (
+
+/**
+ * @brief Processes XMLRPC requests of submitting a new compiling job.
+ *
+ * @param server_ctx a ServerContext
+ * @param session a Session
+ * @param msg a SoupMessage
+ * @param param a GVariant
+ */
+static void Server_rpc_compile (
     struct ServerContext *server_ctx, struct Session *session,
     SoupMessage *msg, GVariant *param) {
   if (!JobTable_try_reserve(&server_ctx->jobtable)) {
@@ -52,7 +65,15 @@ void Server_rpc_compile (
 }
 
 
-void Server_rpc_map (
+/**
+ * @brief Processes XMLRPC requests of mapping a file path to a hash.
+ *
+ * @param server_ctx a ServerContext
+ * @param session a Session
+ * @param msg a SoupMessage
+ * @param param a GVariant
+ */
+static void Server_rpc_map (
     struct ServerContext *server_ctx, struct Session *session,
     SoupMessage *msg, GVariant *param) {
   GVariantIter iter;
@@ -76,7 +97,15 @@ void Server_rpc_map (
 }
 
 
-void Server_rpc_query (
+/**
+ * @brief Processes XMLRPC requests of querying status of compiling jobs.
+ *
+ * @param server_ctx a ServerContext
+ * @param session a Session
+ * @param msg a SoupMessage
+ * @param param a GVariant
+ */
+static void Server_rpc_query (
     struct ServerContext *server_ctx, struct Session *session,
     SoupMessage *msg, GVariant *param) {
   JobID jid;
@@ -248,3 +277,6 @@ Hi, " DFCC_NAME " " DFCC_VERSION "\r\n\
     soup_message_set_status(msg, SOUP_STATUS_NOT_IMPLEMENTED);
   }
 }
+
+
+/**@}*/

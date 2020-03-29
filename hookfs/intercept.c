@@ -6,12 +6,12 @@
 #include "intercept.h"
 
 
-int intercepted_stdin_fd;
-int intercepted_stdout_fd;
-int real_stdin_fd;
-int real_stdout_fd;
-FILE *real_stdin;
-FILE *real_stdout;
+int middle_inner_fd;
+int inner_middle_fd;
+int outer_middle_fd;
+int middle_outer_fd;
+FILE *outer_middle;
+FILE *middle_outer;
 
 
 int intercept_fd (int oldfd, bool oldfd_is_write, int *saved_oldfd) {
@@ -35,13 +35,11 @@ int intercept_fd (int oldfd, bool oldfd_is_write, int *saved_oldfd) {
 
 
 void intercept_stdin_stdout (void) {
-  intercepted_stdin_fd = intercept_fd(STDIN_FILENO, false, &real_stdin_fd);
-  real_stdin = stdin;
-  stdin = fdopen(STDOUT_FILENO, "r");
-  setvbuf(stdin, NULL, _IOLBF, BUFSIZ);
+  middle_inner_fd = intercept_fd(STDIN_FILENO, false, &outer_middle_fd);
+  outer_middle = fdopen(outer_middle_fd, "r");
+  setvbuf(outer_middle, NULL, _IOLBF, BUFSIZ);
 
-  intercepted_stdout_fd = intercept_fd(STDOUT_FILENO, true, &real_stdout_fd);
-  real_stdout = stdout;
-  stdout = fdopen(STDOUT_FILENO, "w");
-  setvbuf(stdout, NULL, _IOLBF, BUFSIZ);
+  inner_middle_fd = intercept_fd(STDOUT_FILENO, true, &middle_outer_fd);
+  middle_outer = fdopen(middle_outer_fd, "w");
+  setvbuf(middle_outer, NULL, _IOLBF, BUFSIZ);
 }

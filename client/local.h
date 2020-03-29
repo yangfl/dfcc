@@ -4,6 +4,13 @@
 #include "../config/config.h"
 
 
+/**
+ * @ingroup Client
+ * @brief Run the compiler locally.
+ *
+ * @param config a Config
+ * @return the exit status of the compiler
+ */
 int Client_run_locally (struct Config *config);
 
 

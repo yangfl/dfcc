@@ -7,16 +7,10 @@
 
 
 int Client_start (struct Config *config) {
-  do_once {
-    if (!Client_can_run_remotely(&config->cc_argv)) {
-      break;
+  if (Client_can_run_remotely(&config->cc_argv)) {
+    if (Client_run_remotely(config) == 0) {
+      return 0;
     }
-
-    if (Client_run_remotely(config) != 0) {
-      break;
-    }
-
-    return 0;
   }
 
   return Client_run_locally(config);

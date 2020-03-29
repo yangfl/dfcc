@@ -10,6 +10,11 @@
 #include "subprocess.h"
 
 
+/**
+ * @ingroup Spawn
+ *
+ * @sa HookedSubprocess
+ */
 struct HookedSubprocessOutput {
   char *path;
   char *tmp_path;
@@ -18,12 +23,26 @@ struct HookedSubprocessOutput {
 };
 
 
+/**
+ * @memberof HookedSubprocessOutput
+ * @brief Frees associated resources of a HookedSubprocessOutput.
+ *
+ * @param output a HookedSubprocessOutput
+ */
 void HookedSubprocessOutput_destroy (struct HookedSubprocessOutput *output);
+/**
+ * @memberof HookedSubprocessOutput
+ * @brief Frees a HookedSubprocessOutput and associated resources.
+ *
+ * @param output a HookedSubprocessOutput
+ */
 void HookedSubprocessOutput_free (void *output);
+//! @memberof HookedSubprocessOutput
 int HookedSubprocessOutput_init (
     struct HookedSubprocessOutput *output, gchar *path,
     int mode, GError **error);
 
+//! @memberof HookedSubprocessOutput
 inline struct HookedSubprocessOutput *HookedSubprocessOutput_new (
     gchar *path, int mode, GError **error) {
   struct HookedSubprocessOutput *output =
@@ -38,14 +57,20 @@ inline struct HookedSubprocessOutput *HookedSubprocessOutput_new (
 
 
 struct HookedSubprocess;
+//! @memberof HookedSubprocess
 typedef void (*HookedSubprocessNextFunc) (struct HookedSubprocess *);
 
+//! @memberof HookedSubprocess
 enum HookedSubprocessPendingType {
   HOOKED_PENDING_NONE = 0,
   HOOKED_PENDING_PATH_HASH,
   HOOKED_PENDING_HASH_FILE
 };
 
+/**
+ * @ingroup Spawn
+ * @extends Subprocess
+ */
 struct HookedSubprocess {
   struct Subprocess;
 
@@ -66,8 +91,18 @@ struct HookedSubprocess {
 };
 
 
+//! @memberof HookedSubprocess
 gboolean HookedSubprocess_run (struct HookedSubprocess *p, GError **error);
+/**
+ * @memberof HookedSubprocess
+ * @brief Frees associated resources of a HookedSubprocess.
+ *
+ * The function does not check whether the child program has stopped.
+ *
+ * @param p a HookedSubprocess
+ */
 void HookedSubprocess_destroy (struct HookedSubprocess *p);
+//! @memberof HookedSubprocess
 int HookedSubprocess_init (
     struct HookedSubprocess *p, gchar **argv, gchar **envp,
     const char *hookfs, const char *selfpath,

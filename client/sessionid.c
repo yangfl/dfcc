@@ -9,7 +9,11 @@
 
 
 SessionID Client__get_session_id () {
-  SessionID sid;
+  static SessionID sid = 0;
+
+  if (sid != 0) {
+    return sid;
+  }
 
   do_once {
     FILE *machineid = g_fopen("/etc/machine-id", "r");
@@ -18,7 +22,7 @@ SessionID Client__get_session_id () {
     }
 
     char buf[33];
-    size_t buf_read = fread(buf, sizeof(buf) - 1, 1, machineid);
+    size_t buf_read = fread(buf, 1, sizeof(buf), machineid);
     if (buf_read < 32) {
       g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
             "/etc/machine-id is supposed to be 32-byte long");
@@ -32,5 +36,6 @@ SessionID Client__get_session_id () {
     return sid;
   }
 
-  return 0x123456;
+  sid = 0x123456;
+  return sid;
 }

@@ -13,19 +13,44 @@
 #include "cache.h"
 
 
+/**
+ * @ingroup File
+ * @extends FileEntryE
+ * @brief Contains the information about a single cache file.
+ *
+ * @sa Cache
+ */
 struct CacheEntry {
   struct FileEntryE;
+  /// Reference counter.
   gatomicrefcount arc;
+  /// Whether the cache file is outdated.
   bool invalid;
 };
 
 
-void CacheEntry_destroy (struct CacheEntry *entrye) {
+/**
+ * @memberof CacheEntry
+ * @brief Frees associated resources of a CacheEntry.
+ *
+ * @param entrye a CacheEntry
+ */
+static void CacheEntry_destroy (struct CacheEntry *entrye) {
   FileEntryE_destroy((struct FileEntryE *) entrye);
 }
 
 
-int CacheEntry_init (
+/**
+ * @memberof CacheEntry
+ * @brief Initializes a CacheEntry with path, stat buffer and hash of a file.
+ *
+ * @param entrye a CacheEntry
+ * @param path path to a file
+ * @param sb GStatBuf of a file
+ * @param hash hash of a file
+ * @return 0 if success, otherwize nonzero
+ */
+static int CacheEntry_init (
     struct CacheEntry *entrye, char *path,
     GStatBuf *sb, struct FileHash *hash) {
   g_atomic_ref_count_init(&entrye->arc);
@@ -49,19 +74,37 @@ static int Cache__construct_subdir (
 }
 
 
+/**
+ * @relates Cache
+ * @brief Constructs the relative path to the file storing `hash`.
+ *
+ * @param hash a FileHash
+ * @param[out] cache_relpath the relative path of length at least
+ *                           @ref Cache_RELPATH_LENGTH
+ * @return 0
+ */
 static int Cache__construct_relpath (
     struct FileHash *hash, char *cache_relpath) {
   Cache__construct_subdir(hash, cache_relpath);
-  cache_relpath[CACHE_SUBDIR_LENGTH] = '/';
-  FileHash_to_string(hash, cache_relpath + CACHE_SUBDIR_LENGTH + 1);
+  cache_relpath[Cache_SUBDIR_LENGTH] = '/';
+  FileHash_to_string(hash, cache_relpath + Cache_SUBDIR_LENGTH + 1);
   return 0;
 }
 
 
+/**
+ * @memberof Cache
+ * @private
+ * @brief Concats Cache.cache_dir and `cache_relpath`.
+ *
+ * @param cache a Cache
+ * @param cache_relpath a relative path
+ * @return the concated path [transfer-full]
+ */
 static char *Cache_realpath_force (
     const struct Cache *cache, char *cache_relpath) {
   char *cache_abspath =
-    g_malloc(cache->cache_dir_len + 1 + CACHE_RELPATH_LENGTH + 1);
+    g_malloc(cache->cache_dir_len + 1 + Cache_RELPATH_LENGTH + 1);
   strcpy(cache_abspath, cache->cache_dir);
   cache_abspath[cache->cache_dir_len] = '/';
   strcpy(&cache_abspath[cache->cache_dir_len + 1], cache_relpath);
@@ -78,9 +121,17 @@ char *Cache_realpath (const struct Cache *cache, char *cache_relpath) {
 }
 
 
+/**
+ * @memberof Cache
+ * @brief Constructs the absolute path to the file storing `hash`.
+ *
+ * @param cache a Cache
+ * @param hash a FileHash
+ * @return the absolute path [transfer-full]
+ */
 static inline char *Cache_construct_abspath (
     const struct Cache *cache, struct FileHash *hash) {
-  char cache_relpath[CACHE_RELPATH_LENGTH + 1];
+  char cache_relpath[Cache_RELPATH_LENGTH + 1];
   Cache__construct_relpath(hash, cache_relpath);
   return Cache_realpath_force(cache, cache_relpath);
 }
@@ -166,7 +217,7 @@ static struct FileEntryE *Cache_index (
 
 static struct FileEntryE *Cache_index_cache (
     struct Cache *cache, struct FileHash *hash, GError **error) {
-  char cache_relpath[CACHE_RELPATH_LENGTH + 1];
+  char cache_relpath[Cache_RELPATH_LENGTH + 1];
   Cache__construct_relpath(hash, cache_relpath);
   char *cache_abspath = Cache_realpath_force(cache, cache_relpath);
 
@@ -246,17 +297,17 @@ struct FileEntryE *Cache_index_buf (
   }
 
   // write to cache dir
-  char cache_relpath[CACHE_RELPATH_LENGTH + 1];
+  char cache_relpath[Cache_RELPATH_LENGTH + 1];
   Cache__construct_relpath(&hash, cache_relpath);
   char *cache_abspath = Cache_realpath(cache, cache_relpath);
 
   do_once {
     // mkdir -p
-    cache_abspath[cache->cache_dir_len + 1 + CACHE_SUBDIR_LENGTH] = '\0';
+    cache_abspath[cache->cache_dir_len + 1 + Cache_SUBDIR_LENGTH] = '\0';
     should (g_mkdir_with_parents_e(
       cache_abspath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH, error) == 0
     ) otherwise break;
-    cache_abspath[cache->cache_dir_len + 1 + CACHE_SUBDIR_LENGTH] = '/';
+    cache_abspath[cache->cache_dir_len + 1 + Cache_SUBDIR_LENGTH] = '/';
 
     // write
     FILE *f = g_fopen_e(cache_abspath, "w", error);

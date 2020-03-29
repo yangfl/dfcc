@@ -42,6 +42,13 @@ int Job_init (struct Job *job, SessionID sid,
 extern inline bool JobTable_full (struct JobTable *jobtable);
 
 
+/**
+ * @related JobTable
+ * @brief Callback when a compiler process ends.
+ *
+ * @param spawn a Subprocess
+ * @param userdata pointer to a JobTable
+ */
 static void JobTable_onjobfinish (struct Subprocess *spawn, void *userdata) {
   struct JobTable *jobtable = (struct JobTable *) userdata;
 

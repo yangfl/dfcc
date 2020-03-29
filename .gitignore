@@ -4,4 +4,4 @@
 *.so
 tmp/
 out/
-docs/src_docs/
+doc/

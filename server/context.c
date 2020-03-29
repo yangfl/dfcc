@@ -13,7 +13,7 @@ gboolean ServerContext__housekeep (gpointer user_data) {
     (struct ServerHousekeepingContext *) user_data;
   if unlikely (server_housekeeping_ctx->stop) {
     g_free(server_housekeeping_ctx);
-    return FALSE;
+    return G_SOURCE_REMOVE;
   }
 
   g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Do housekeep");
@@ -24,7 +24,7 @@ gboolean ServerContext__housekeep (gpointer user_data) {
     server_housekeeping_ctx->session_timeout);
   g_rw_lock_writer_unlock(
     &server_housekeeping_ctx->server_ctx->sessions_rwlock);
-  return TRUE;
+  return G_SOURCE_CONTINUE;
 }
 
 

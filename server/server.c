@@ -17,8 +17,21 @@
 #include "session.h"
 #include "server.h"
 
+/**
+ * @addtogroup Server
+ * @{
+ */
 
-static inline bool Server_check_path (
+
+/**
+ * @brief Checks if `path` is a proper path under the toplevel for the handler.
+ *
+ * @param server_ctx the ServerContext
+ * @param path the path component of the request
+ * @param prefix_len the length of the toplevel path for the handler
+ * @return `true` if proper
+ */
+static inline bool Server_is_path_proper (
     struct ServerContext *server_ctx,
     const char *path, unsigned int prefix_len) {
   path += server_ctx->base_path_len + prefix_len;
@@ -32,15 +45,40 @@ static inline bool Server_check_path (
 }
 
 
+/**
+ * @brief Userdata for `soup_server_add_handler`.
+ *
+ * @sa Server_handle
+ */
 struct ServerCallbackContext {
+  /// The ServerContext.
   struct ServerContext *server_ctx;
+  /// One of the handlers in @ref ServerHandler.
   void (*handler) (
     struct ServerContext *, struct Session *, const char *, SoupMessage *);
-  int path_len;
-  bool force_sid;
+  /**
+   * @brief The length of the toplevel path for the handler.
+   *
+   * For tests in Server_is_path_proper. -1 means the length is 0. 0 means the
+   * path can be improper.
+   */
+  int prefix_len;
+  /// RPC requires a vaild SessionID.
+  bool sid_required;
 };
 
 
+/**
+ * @brief Middleware before the real handler.
+ *
+ * @param server the SoupServer
+ * @param msg the message being processed
+ * @param path the path component of `msg`'s Request-URI
+ * @param query the parsed query component of `msg`'s Request-URI
+ *              [element-type utf8 utf8][allow-none]
+ * @param context additional contextual information about the client
+ * @param data pointer to a ServerCallbackContext
+ */
 static void Server_handle (
     SoupServer *server, SoupMessage *msg, const char *path, GHashTable *query,
     SoupClientContext *context, gpointer data) {
@@ -48,16 +86,18 @@ static void Server_handle (
     (struct ServerCallbackContext *) data;
 
   do_once {
+    // check for proper path
     if unlikely (
-        server_cb_ctx->path_len != 0 && !Server_check_path(
+        server_cb_ctx->prefix_len != 0 && !Server_is_path_proper(
           server_cb_ctx->server_ctx, path,
-          server_cb_ctx->path_len == -1 ? 0 : server_cb_ctx->path_len)) {
+          server_cb_ctx->prefix_len == -1 ? 0 : server_cb_ctx->prefix_len)) {
       soup_message_set_status(msg, SOUP_STATUS_NOT_FOUND);
       break;
     }
 
     SessionID sid = SessionID__MAX;
 
+    // extract sid from cookies
     gchar **cookies = g_strsplit(
       soup_message_headers_get_one(msg->request_headers, "Cookie"), "; ", 0);
     for (int i = 0; cookies[i] != NULL; i++) {
@@ -73,11 +113,13 @@ static void Server_handle (
     }
     g_strfreev(cookies);
 
-    if (server_cb_ctx->force_sid && sid == SessionID__MAX) {
+    // check for a vaild sid
+    if (server_cb_ctx->sid_required && !SessionID_vaild(sid)) {
       soup_message_set_status(msg, SOUP_STATUS_BAD_REQUEST);
       break;
     }
 
+    // send request to the real handler
     server_cb_ctx->handler(
       server_cb_ctx->server_ctx,
       SessionTable_get(server_cb_ctx->server_ctx->sessions, sid), path, msg);
@@ -89,6 +131,13 @@ static void Server_handle (
 GMainLoop *loop;
 
 
+/**
+ * @brief Callback when receives `SIGINT` signal.
+ *
+ * Quit loop.
+ *
+ * @param sig signal
+ */
 static void Server_quit (int sig) {
   g_main_loop_quit(loop);
 }
@@ -135,7 +184,7 @@ int Server_start (struct Config *config) {
   struct ServerCallbackContext server_cb_ctx_homepage = {
     .server_ctx = &server_ctx,
     .handler = Server_handle_homepage,
-    .path_len = -1
+    .prefix_len = -1
   };
   soup_server_add_handler(server, config->base_path, Server_handle,
                           &server_cb_ctx_homepage, NULL);
@@ -147,14 +196,14 @@ int Server_start (struct Config *config) {
                      ) + 1];
   memcpy(register_path, config->base_path, server_ctx.base_path_len);
 
-#define register_router(prefix, path_len_, force_sid_, handler_) \
+#define register_router(prefix, prefix_len_, sid_required_, handler_) \
   memcpy(register_path + server_ctx.base_path_len, prefix, \
          strlen(prefix) + 1); \
   struct ServerCallbackContext server_cb_ctx_ ## prefix = { \
     .server_ctx = &server_ctx, \
     .handler = (handler_), \
-    .path_len = (path_len_), \
-    .force_sid = (force_sid_) \
+    .prefix_len = (prefix_len_), \
+    .sid_required = (sid_required_) \
   }; \
   soup_server_add_handler(server, register_path, Server_handle, \
                           &server_cb_ctx_ ## prefix, NULL);
@@ -192,3 +241,6 @@ int Server_start (struct Config *config) {
   ServerContext_destroy(&server_ctx);
   return 0;
 }
+
+
+/**@}*/

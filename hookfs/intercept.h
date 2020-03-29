@@ -4,12 +4,12 @@
 #include <stdio.h>
 
 
-extern int intercepted_stdin_fd;
-extern int intercepted_stdout_fd;
-extern int real_stdin_fd;
-extern int real_stdout_fd;
-extern FILE *real_stdin;
-extern FILE *real_stdout;
+extern int middle_inner_fd;
+extern int inner_middle_fd;
+extern int outer_middle_fd;
+extern int middle_outer_fd;
+extern FILE *outer_middle;
+extern FILE *middle_outer;
 
 
 void intercept_stdin_stdout (void);

@@ -1,5 +1,12 @@
 #ifndef DFCC_SERVER_COMMON_H
 #define DFCC_SERVER_COMMON_H
+/**
+ * @addtogroup Server
+ * @{
+ * @defgroup ServerCommon Server Common
+ * @brief Common server-related functions
+ * @{
+ */
 
 #include <libsoup/soup.h>
 #include <glib/gstdio.h>
@@ -11,4 +18,8 @@ void G_GNUC_PRINTF (4, 5) soup_xmlrpc_message_log_and_set_fault (
 gboolean soup_xmlrpc_message_set_response_e (SoupMessage *msg, GVariant *value);
 
 
+/**
+ * @}
+ * @}
+ */
 #endif /* DFCC_SERVER_COMMON_H */

@@ -1,5 +1,13 @@
 #ifndef DFCC_FILE_COMMON_H
 #define DFCC_FILE_COMMON_H
+/**
+ * @defgroup File File
+ * @brief File related code
+ * @{
+ * @defgroup FileCommon File Common
+ * @brief Common variables and wrapped IO functions
+ * @{
+ */
 
 #include <unistd.h>
 
@@ -44,4 +52,8 @@ WRAP_IO_GERROR(
   (ptr, size, nmemb, stream), == 0, "Failed to fwrite")
 
 
+/**
+ * @}
+ * @}
+ */
 #endif /* DFCC_FILE_COMMON_H */

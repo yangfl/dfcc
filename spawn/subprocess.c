@@ -37,6 +37,17 @@ static void Subprocess_child_watch_cb (GPid pid, gint status, gpointer user_data
 }
 
 
+/**
+ * @memberof Subprocess
+ * @private
+ * @brief Search for a executable in the `PATH` environment variable, with
+ *        `selfpath` avoided.
+ *
+ * @param file name of the executable
+ * @param selfpath path to be avoided when searching in `PATH`
+ * @param[out] error a return location for a GError [optional]
+ * @return the full path to the executable, or NULL
+ */
 static char *Subprocess__search_executable (
     const char *file, const char *selfpath, GError **error) {
   bool would_loop = false;

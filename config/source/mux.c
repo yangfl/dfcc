@@ -16,12 +16,6 @@ char **Config_mux (
   args = g_strdupv((gchar **) argv);
 #endif
 
-  // cc dfcc_client_argv -- cc_argv
-  // cc cc_argv
-  // dfcc dfcc_client_argv -- cc cc_argv
-  // dfcc
-  // dfcc dfcc_server_argv
-  // dfcc cc cc_argv
   if (config->symlinked) {
     for (int i = 0; args[i] != NULL; i++) {
       if (strcmp(args[i], "--") == 0) {

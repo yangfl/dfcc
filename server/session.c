@@ -7,6 +7,7 @@
 #include "session.h"
 
 
+extern inline bool SessionID_vaild (SessionID sid);
 extern inline void Session_destroy (struct Session *session);
 extern inline int Session_init (struct Session *session, SessionID sid);
 
