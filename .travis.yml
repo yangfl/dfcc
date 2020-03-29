@@ -1,0 +1,17 @@
+lanuage: cpp
+compiler: g++
+sudo: require
+dist: bionic
+
+before_install:
+        - sudo apt update
+
+install:
+        - sudo apt install cmake make gcc libgio2.0-cil-dev libsoup2.4-cil-dev libsoup2.4-dev
+
+script:
+        - make -j$(nproc)
+        #- mkdir build && cd build && qmake .. && make -j$(nproc)
+
+after_sucess:
+        echo "compile done"
