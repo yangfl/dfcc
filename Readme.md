@@ -1,4 +1,4 @@
-# A MPI project by DF [![Build Status](https://travis-ci.org/Texas-C/dfcc.svg?branch=master)](https://travis-ci.org/Texas-C/dfcc)
+# A MPI project by DF [![Build Status](https://travis-ci.org/yangfl/dfcc.svg?branch=master)](https://travis-ci.org/yangfl/dfcc)
 
 # Usage:
 
