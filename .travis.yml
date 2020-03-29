@@ -7,7 +7,7 @@ before_install:
         - sudo apt update
 
 install:
-        - sudo apt install cmake make gcc libgio2.0-cil-dev libsoup2.4-cil-dev libsoup2.4-dev
+        - sudo apt install cmake make gcc libgio2.0-cil-dev libsoup2.4-cil-dev libsoup2.4-dev golang-github-oneofone-xxhash-dev
 
 script:
         - make -j$(nproc)

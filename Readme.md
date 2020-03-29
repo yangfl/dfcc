@@ -8,11 +8,11 @@
 
 ## dependencies:
 
-	glib gio2 soup2
+	glib gio2 soup2 xxhash
 
 install: __Debian/Ubuntu command__ (example)
 
-	sudo apt install git cmake make gcc libgio2.0-cil-dev libsoup2.4-cil-dev libsoup2.4-dev
+	sudo apt install git cmake make gcc libgio2.0-cil-dev libsoup2.4-cil-dev libsoup2.4-dev	golang-github-oneofone-xxhash-dev
 
 	make -j$(nproc)
 
