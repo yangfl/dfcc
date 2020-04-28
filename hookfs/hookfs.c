@@ -16,15 +16,21 @@
 #include <linux/limits.h>  // PATH_MAX
 
 #include "macro.h"
-#include "hack.h"
 
 #include "intercept.h"
+#include "serializer.h"
 
 /**
  * @defgroup Hookfs Hookfs
  * @{
  */
 
+
+int outer_middle_fd;
+int middle_outer_fd;
+FILE *outer_middle;
+FILE *middle_outer;
+struct SerializerIOFuncs iofuncs;
 
 #define check(func) \
 should (errno == 0) otherwise { \
@@ -40,7 +46,7 @@ should (errno == 0) otherwise { \
 
 
 /**
- * @brief Resolve the real function provided by libc.
+ * @brief Resolves the real function provided by libc.
  *
  * @param symbol string of function name
  * @return libc function `symbol`
@@ -56,7 +62,7 @@ static void *resolve (const char *symbol) {
 
 
 /**
- * @brief Wrap a libc function.
+ * @brief Wraps a libc function.
  *
  * @code{.c}
   WRAP(int, open) (const char *path, int oflag, mode_t mode) {
@@ -78,24 +84,19 @@ static void *resolve (const char *symbol) {
 
 
 /**
- * @brief Read the wrapped path from controller.
+ * @brief Reads the wrapped path from controller.
  *
  * @param[out] new_path wrapped path
  * @param size maximum length of `new_path`
  * @return `true` if `new_path` vaild
  */
 static bool get_wrapped_path (char new_path[], size_t size) {
-  should (fgets(new_path, size, outer_middle) != NULL) otherwise {
-    perror("fgets");
+  should (deserialize_string(&iofuncs, new_path, size, NULL) != NULL) otherwise {
+    fprintf(stderr, "get_wrapped_path: Error\n");
     exit(1);
   }
-  size_t new_path_len = strlen(new_path);
-  should (new_path[new_path_len - 1] == '\n') otherwise {
-    fprintf(stderr, "get_wrapped_path: Path too long\n");
-    exit(1);
-  }
-  new_path[new_path_len - 1] = '\0';
-  if (strcmp(new_path, ".") == 0) {
+  getc(outer_middle);  // '\n'
+  if (new_path[0] == '\0') {
     return false;
   }
   return true;
@@ -114,20 +115,20 @@ static bool get_wrapped_path (char new_path[], size_t size) {
   } \
 }
 
-#define HOOK(type, func, s_i_path, fmt, ...) { \
-  fputs(# func, middle_outer); \
-  fprintf(middle_outer, " %d %s\n" fmt, VA_NARGS(__VA_ARGS__), s_i_path, ## __VA_ARGS__); \
-  fflush(middle_outer); \
-  type ret = libc_ ## func(__VA_ARGS__); \
+#define HOOK(type, func, args, ...) { \
+  serialize_string(&iofuncs, # func); \
+  __VA_ARGS__ \
+  serialize_end(&iofuncs); \
+  type ret = libc_ ## func args; \
   return ret; \
 }
 
-#define HOOK_PATH(type, func, s_i_path, path, fmt, ...) { \
-  fputs(# func, middle_outer); \
-  fprintf(middle_outer, " %d %s?\n" fmt, VA_NARGS(__VA_ARGS__), s_i_path, ## __VA_ARGS__); \
-  fflush(middle_outer); \
+#define HOOK_PATH(type, func, args, path, ...) { \
+  serialize_string(&iofuncs, # func); \
+  __VA_ARGS__ \
+  serialize_end(&iofuncs); \
   GET_PATH(path); \
-  type ret = libc_ ## func(__VA_ARGS__); \
+  type ret = libc_ ## func args; \
   return ret; \
 }
 
@@ -196,39 +197,71 @@ WRAP(int, execv) (const char *path, char *const argv[]) {
 
 
 WRAP(int, execve) (const char *path, char *const argv[], char *const envp[])
-HOOK(int, execve, "0", "%s\n%p\n%p\n", path, argv, envp)
+HOOK(int, execve, (path, argv, envp),
+  serialize_string(&iofuncs, path);
+  serialize_strv(&iofuncs, argv);
+  serialize_strv(&iofuncs, envp);
+)
 
 
 WRAP(int, execvp) (const char *file, char *const argv[])
-HOOK(int, execvp, "0", "%s\n%p\n", file, argv)
+HOOK(int, execvp, (file, argv),
+  serialize_string(&iofuncs, file);
+  serialize_strv(&iofuncs, argv);
+)
 
 
 WRAP(int, access) (const char *pathname, int mode)
-HOOK_PATH(int, access, "0", pathname, "%s\n%d\n", pathname, mode)
+HOOK_PATH(int, access, (pathname, mode), pathname,
+  serialize_string(&iofuncs, pathname);
+  serialize_printf(&iofuncs, "%d", mode);
+)
 
 
 WRAP(int, stat) (const char *pathname, struct stat *statbuf)
-HOOK_PATH(int, stat, "0", pathname, "%s\n%p\n", pathname, statbuf)
+HOOK_PATH(int, stat, (pathname, statbuf), pathname,
+  serialize_string(&iofuncs, pathname);
+  serialize_printf(&iofuncs, "%p", statbuf);
+)
 
 
 WRAP(int, lstat) (const char *pathname, struct stat *statbuf)
-HOOK_PATH(int, lstat, "0", pathname, "%s\n%p\n", pathname, statbuf)
+HOOK_PATH(int, lstat, (pathname, statbuf), pathname,
+  serialize_string(&iofuncs, pathname);
+  serialize_printf(&iofuncs, "%p", statbuf);
+)
 
 
+/*
 WRAP(int, open) (const char *path, int oflag, mode_t mode)
-HOOK_PATH(int, open, "0", path, "%s\n%d\n%d\n", path, oflag, mode)
+HOOK_PATH(int, open, (path, oflag, mode), path,
+  serialize_string(&iofuncs, path);
+  serialize_printf(&iofuncs, "%d", oflag);
+  serialize_printf(&iofuncs, "%d", mode);
+)
 
 
 WRAP(int, open64) (const char *path, int oflag, mode_t mode)
-HOOK_PATH(int, open64, "0", path, "%s\n%d\n%d\n", path, oflag, mode)
+HOOK_PATH(int, open64, (path, oflag, mode), path,
+  serialize_string(&iofuncs, path);
+  serialize_printf(&iofuncs, "%d", oflag);
+  serialize_printf(&iofuncs, "%d", mode);
+)
+*/
 
 
 WRAP(FILE *, fopen) (const char *filename, const char *mode)
-HOOK_PATH(FILE *, fopen, "0", filename, "%s\n%s\n", filename, mode)
+HOOK_PATH(FILE *, fopen, (filename, mode), filename,
+  serialize_string(&iofuncs, filename);
+  serialize_string(&iofuncs, mode);
+)
 
 
 WRAP(FILE *, fopen64) (const char *filename, const char *mode)
-HOOK_PATH(FILE *, fopen64, "0", filename, "%s\n%s\n", filename, mode)
+HOOK_PATH(FILE *, fopen64, (filename, mode), filename,
+  serialize_string(&iofuncs, filename);
+  serialize_string(&iofuncs, mode);
+)
 
 
 /*
@@ -242,35 +275,52 @@ HOOK(int, fclose64, "0", "%p\n", stream)
 
 
 WRAP(FILE *, freopen) (const char *filename, const char *mode, FILE *stream)
-HOOK_PATH(FILE *, freopen, "0", filename, "%s\n%s\n%p\n", filename, mode, stream)
+HOOK_PATH(FILE *, freopen, (filename, mode, stream), filename,
+  serialize_string(&iofuncs, filename);
+  serialize_string(&iofuncs, mode);
+  serialize_printf(&iofuncs, "%p", stream);
+)
 
 
 WRAP(FILE *, freopen64) (const char *filename, const char *mode, FILE *stream)
-HOOK_PATH(FILE *, freopen64, "0", filename, "%s\n%s\n%p\n", filename, mode, stream)
+HOOK_PATH(FILE *, freopen64, (filename, mode, stream), filename,
+  serialize_string(&iofuncs, filename);
+  serialize_string(&iofuncs, mode);
+  serialize_printf(&iofuncs, "%p", stream);
+)
 
 
 WRAP(int, rename) (const char *oldname, const char *newname)
-HOOK(int, rename, "0 1", "%s\n%s\n", oldname, newname)
+HOOK(int, rename, (oldname, newname),
+  serialize_string(&iofuncs, oldname);
+  serialize_string(&iofuncs, newname);
+)
 
 
 WRAP(int, unlink) (const char *filename)
-HOOK(int, unlink, "0", "%s\n", filename)
+HOOK(int, unlink, (filename),
+  serialize_string(&iofuncs, filename);
+)
 
 
 WRAP(int, remove) (const char *filename)
-HOOK(int, remove, "0", "%s\n", filename)
+HOOK(int, remove, (filename),
+  serialize_string(&iofuncs, filename);
+)
 
 
 WRAP(FILE *, tmpfile) (void)
-HOOK(FILE *, tmpfile, "", "")
+HOOK(FILE *, tmpfile, ())
 
 
 WRAP(FILE *, tmpfile64) (void)
-HOOK(FILE *, tmpfile64, "", "")
+HOOK(FILE *, tmpfile64, ())
 
 
-WRAP(DIR*, opendir) (const char *name)
-HOOK_PATH(DIR*, opendir, "0", name, "%s\n", name)
+WRAP(DIR *, opendir) (const char *name)
+HOOK_PATH(DIR *, opendir, (name), name,
+  serialize_string(&iofuncs, name);
+)
 
 
 /*
@@ -286,21 +336,32 @@ WRAP(ssize_t, read) (int fd, void *buf, size_t count) {
 
 
 static void __attribute__ ((destructor)) hookfs_del () {
+
 }
 
 
 static void __attribute__ ((constructor)) hookfs_init () {
-  intercept_stdin_stdout();
+  iofuncs.ostream = middle_outer;
+  iofuncs.printf = (SerializerIOFuncs__printf_t) fprintf;
+  iofuncs.puts = (SerializerIOFuncs__puts_t) fputs;
+  iofuncs.write = (SerializerIOFuncs__write_t) fwrite;
+  iofuncs.istream = outer_middle;
+  iofuncs.scanf = (SerializerIOFuncs__scanf_t) fscanf;
+  iofuncs.read = (SerializerIOFuncs__read_t) fread;
+
   char orig_stdin_path[PATH_MAX];
   should (get_wrapped_path(orig_stdin_path, sizeof(orig_stdin_path))) otherwise {
     fputs("stdin path unprovided\n", stderr);
     exit(-1);
   }
+
   char orig_stdout_path[PATH_MAX];
   should (get_wrapped_path(orig_stdout_path, sizeof(orig_stdout_path))) otherwise {
     fputs("stdout path unprovided\n", stderr);
     exit(-1);
   }
+
+  pipe_stdin_stdout(orig_stdin_path, orig_stdout_path);
 }
 
 

@@ -45,8 +45,8 @@ int ServerContext_init (struct ServerContext *server_ctx,
 
   Cache_init(
     &server_ctx->cache, g_strdup(config->cache_dir), config->no_verify_cache);
-  server_ctx->sessions =
-    g_hash_table_new_full(g_int_hash, g_int_equal, NULL, Session_free);
+  server_ctx->sessions = g_hash_table_new_full(g_int_hash, g_int_equal, NULL,
+                                               (void (*)(void *)) Session_free);
   g_rw_lock_init(&server_ctx->sessions_rwlock);
   JobTable_init(&server_ctx->jobtable, config->jobs);
 

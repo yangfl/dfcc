@@ -76,18 +76,17 @@ struct HookedSubprocess {
 
   GString *stdout_buf;
 
-  enum HookedSubprocessPendingType pending_type;
-  union {
-    char *pending_path;
-    struct FileHash pending_hash;
-  };
-
   struct RemoteFileIndex *index;
   struct Cache *cache;
   GHashTable *outputs;
 
   HookedSubprocessNextFunc onmissing;
   void *onmissing_userdata;
+  enum HookedSubprocessPendingType pending_type;
+  union {
+    char *pending_path;
+    struct FileHash pending_hash;
+  };
 };
 
 

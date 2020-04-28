@@ -100,7 +100,6 @@ static char *Subprocess__search_executable (
 int Subprocess_init (
     struct Subprocess *p, gchar **argv, gchar **envp,
     const char *selfpath, GError **error) {
-
   GSpawnFlags search_path = selfpath == NULL ? G_SPAWN_SEARCH_PATH : 0;
   gchar **argv_searched;
   if (selfpath == NULL) {

@@ -53,10 +53,9 @@ void Job_free (struct Job *job);
  *
  * @param job a Job
  * @param sid Session ID
- * @param argv compiler's argument vector
- *             [array zero-terminated=1][element-type filename]
+ * @param argv compiler's argument vector [array zero-terminated=1]
  * @param envp compiler's environment, or NULL to inherit parent's
- *             [array zero-terminated=1][element-type filename][optional]
+ *             [array zero-terminated=1][optional]
  * @param working_directory compiler's working directory, remotely
  * @param hookfs path to the preload library `hookfs`
  * @param selfpath path to the executable of `dfcc`

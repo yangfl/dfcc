@@ -31,7 +31,8 @@ inline char chr2hex (unsigned char c) {
  * @param src buffer of data to be convert
  * @param len length of `src`
  */
-inline void buf2hex (char *dst, const void *src, unsigned int len) {
+inline void __attribute__((nonnull)) buf2hex (char *dst, const void *src,
+                                              unsigned int len) {
   const unsigned char *src_ = src;
   for (unsigned int i = 0; i < len; i++) {
     dst[2 * i] = chr2hex(src_[i] >> 4);

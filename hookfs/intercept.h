@@ -4,15 +4,9 @@
 #include <stdio.h>
 
 
-extern int middle_inner_fd;
-extern int inner_middle_fd;
-extern int outer_middle_fd;
-extern int middle_outer_fd;
-extern FILE *outer_middle;
-extern FILE *middle_outer;
-
-
-void intercept_stdin_stdout (void);
+int intercept_stdin_stdout (void);
+int pipe_stdin_stdout (const char orig_stdin_path[],
+                       const char orig_stdout_path[]);
 
 
 #endif /* HOOKFS_INTERCEPT_H */

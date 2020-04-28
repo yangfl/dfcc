@@ -69,13 +69,15 @@ inline void Session_destroy (struct Session *session) {
 }
 
 /**
- * @fn void Session_free (struct Session *session)
  * @memberof Session
  * @brief Frees a Session and associated resources.
  *
  * @param session a Session
  */
-GENERATE_FREE_FUNC(Session, g_free)
+inline void Session_free (struct Session *session) {
+  Session_destroy(session);
+  free(session);
+}
 
 /**
  * @memberof Session

@@ -14,7 +14,7 @@ CPPFLAGS += -Icommon
 CFLAGS += -fms-extensions
 LDFLAGS += -rdynamic -fPIE -Wl,--gc-sections
 
-LIBS := glib-2.0 gio-2.0 libsoup-2.4
+LIBS := glib-2.0 gio-2.0 gio-unix-2.0 libsoup-2.4
 LIBS_CPPFLAGS := $(shell pkg-config --cflags-only-I $(LIBS))
 LIBS_CFLAGS := $(shell pkg-config --cflags-only-other $(LIBS))
 LIBS_LDFLAGS := -lxxhash $(shell pkg-config --libs $(LIBS))
@@ -33,7 +33,7 @@ SOURCES := \
 		config/source/mux.c \
 	file/common.c file/cache.c file/entry.c file/etag.c file/hash.c \
 	file/localindex.c file/remoteindex.c \
-	spawn/hookedsubprocess.c spawn/subprocess.c \
+	spawn/hookfsserver.c spawn/hookedsubprocess.c spawn/subprocess.c \
 	client/client.c client/ccargs.c client/local.c \
 		client/remote.c client/sessionid.c \
 	server/server.c server/common.c server/context.c server/debug.c \

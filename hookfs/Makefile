@@ -14,7 +14,7 @@ CFLAGS += -fms-extensions
 LDFLAGS += -shared -ldl
 
 SOURCES := \
-	hookfs.c intercept.c
+	hookfs.c intercept.c serializer.c
 OBJS := $(SOURCES:.c=.o)
 PREREQUISITES := $(SOURCES:.c=.d)
 

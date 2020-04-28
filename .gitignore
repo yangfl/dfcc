@@ -4,4 +4,4 @@
 *.so
 tmp/
 out/
-doc/
+docs/html/

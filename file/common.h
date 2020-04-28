@@ -14,6 +14,8 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
+#include <macro.h>
+
 
 extern GQuark DFCC_FILE_IO_ERROR;
 

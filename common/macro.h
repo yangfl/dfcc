@@ -80,6 +80,8 @@
  */
 #define do_once switch (1) case 1:
 
+#define named_block(n) if (0) n: switch (1) case 1
+
 /**
  * @brief Calculates the maximum of `a` and `b`.
  *

@@ -12,6 +12,8 @@
 #include "version.h"
 
 
+#include "spawn/hookfsserver.h"
+
 extern char **environ;
 
 
@@ -21,6 +23,14 @@ static void show_version () {
 
 
 int main (int argc, char *argv[]) {
+  struct HookFsServer a;
+  GError *error = NULL;
+  if (HookFsServer_init(&a, "server.sock", NULL, &error)) return 1;
+  if (error)
+    g_warning("Failed to bind to Unix socket at '%s': %s",
+        "a", error->message);
+  return 0;
+
   if (g_getenv(DFCC_LOOP_DETECTION_ENV) != NULL) {
     g_printerr("Recursive call detected!\n");
     return 255;
@@ -42,16 +52,15 @@ int main (int argc, char *argv[]) {
     g_setenv("G_MESSAGES_DEBUG", "all", TRUE);
   }
 
-  // a
-  if (config.foreground) {
-    should (daemon(1, 0) == 0) otherwise {
-      g_printerr("Daemonization failed\n");
-      return EXIT_FAILURE;
-    }
-  }
-
   if (config.server_mode) {
     g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Server mode");
+    // a
+    if (config.foreground) {
+      should (daemon(1, 0) == 0) otherwise {
+        g_printerr("Daemonization failed\n");
+        return EXIT_FAILURE;
+      }
+    }
     ret = Server_start(&config);
   } else {
     g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Client mode");
