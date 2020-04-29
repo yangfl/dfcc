@@ -3,36 +3,30 @@
 
 #include <stddef.h>
 
-#include <simplestring.h>
-
-/**
- * @addtogroup Hookfs
- * @{
- */
+#include "tinyglib.h"
 
 
-struct SimpleIOStream {
-  struct SimpleString;
-
-  int i;
+//! @ingroup Hookfs
+struct SimpleIStream {
+  char *data;
   FILE *f;
-}
+  unsigned int len;
+  unsigned int i;
+};
 
 
-int sioprintf (
-    struct SimpleString * restrict s, const char * restrict format, ...)
-  __attribute__((format(printf, 2, 3)));
+#define sioprintf g_string_append_printf
 size_t siowrite (
-    const void * restrict ptr, size_t size, size_t count,
-    struct SimpleString * restrict s);
+  const void * restrict ptr, size_t size, size_t count,
+  GString * restrict s);
 int sioscanf (
-    struct SimpleString * restrict s, const char * restrict format, ...)
+  struct SimpleIStream * restrict s, const char * restrict format, ...)
   __attribute__((format(scanf, 2, 3)));
 size_t sioread (
-    const void * restrict ptr, size_t size, size_t count,
-    struct SimpleString * restrict s);
-
-/**@}*/
+  void * restrict ptr, size_t size, size_t count,
+  struct SimpleIStream * restrict s);
+void SimpleIStream_destroy (struct SimpleIStream *s);
+int SimpleIStream_init (struct SimpleIStream *s, void *ptr, size_t size);
 
 
 #endif /* HOOKFS_SIMPLEIOSTREAM_H */

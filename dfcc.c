@@ -12,8 +12,6 @@
 #include "version.h"
 
 
-#include "spawn/hookfsserver.h"
-
 extern char **environ;
 
 
@@ -23,14 +21,6 @@ static void show_version () {
 
 
 int main (int argc, char *argv[]) {
-  struct HookFsServer a;
-  GError *error = NULL;
-  if (HookFsServer_init(&a, "server.sock", NULL, &error)) return 1;
-  if (error)
-    g_warning("Failed to bind to Unix socket at '%s': %s",
-        "a", error->message);
-  return 0;
-
   if (g_getenv(DFCC_LOOP_DETECTION_ENV) != NULL) {
     g_printerr("Recursive call detected!\n");
     return 255;

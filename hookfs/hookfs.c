@@ -17,8 +17,9 @@
 
 #include "macro.h"
 
-#include "intercept.h"
 #include "serializer.h"
+#include "simpleiostream.h"
+#include "socket.h"
 
 /**
  * @defgroup Hookfs Hookfs
@@ -26,11 +27,8 @@
  */
 
 
-int outer_middle_fd;
-int middle_outer_fd;
-FILE *outer_middle;
-FILE *middle_outer;
 struct SerializerIOFuncs iofuncs;
+struct Socket sock;
 
 #define check(func) \
 should (errno == 0) otherwise { \
@@ -95,7 +93,7 @@ static bool get_wrapped_path (char new_path[], size_t size) {
     fprintf(stderr, "get_wrapped_path: Error\n");
     exit(1);
   }
-  getc(outer_middle);  // '\n'
+  //getc(outer_middle);  // '\n'
   if (new_path[0] == '\0') {
     return false;
   }
@@ -125,7 +123,7 @@ static bool get_wrapped_path (char new_path[], size_t size) {
 
 #define HOOK_PATH(type, func, args, path, ...) { \
   char buf[Hookfs_MAX_TOKEN_LEN]; \
-  iofuncs.ostream = buf;
+  iofuncs.ostream = buf; \
   serialize_string(&iofuncs, # func); \
   __VA_ARGS__ \
   serialize_end(&iofuncs); \
@@ -343,26 +341,30 @@ static void __attribute__ ((destructor)) hookfs_del () {
 
 
 static void __attribute__ ((constructor)) hookfs_init () {
-  iofuncs.ostream = middle_outer;
-  iofuncs.printf = (SerializerIOFuncs__printf_t) fprintf;
-  iofuncs.write = (SerializerIOFuncs__write_t) fwrite;
-  iofuncs.istream = outer_middle;
-  iofuncs.scanf = (SerializerIOFuncs__scanf_t) fscanf;
-  iofuncs.read = (SerializerIOFuncs__read_t) fread;
-
-  char orig_stdin_path[PATH_MAX];
-  should (get_wrapped_path(orig_stdin_path, sizeof(orig_stdin_path))) otherwise {
-    fputs("stdin path unprovided\n", stderr);
-    exit(-1);
+  char *sock_path = getenv("HOOKFS_SOCK_PATH");
+  should (sock_path != NULL) otherwise {
+    fputs("No HOOKFS_SOCK_PATH specified!\n", stderr);
+    exit(255);
   }
 
-  char orig_stdout_path[PATH_MAX];
-  should (get_wrapped_path(orig_stdout_path, sizeof(orig_stdout_path))) otherwise {
-    fputs("stdout path unprovided\n", stderr);
-    exit(-1);
+  char *hookfs_id = getenv("HOOKFS_ID");
+  should (hookfs_id != NULL) otherwise {
+    fputs("No HOOKFS_ID specified!\n", stderr);
+    exit(255);
   }
 
-  pipe_stdin_stdout(orig_stdin_path, orig_stdout_path);
+  should (Socket_init(&sock, sock_path) == 0) otherwise {
+    exit(255);
+  }
+
+  should (Socket_send(&sock, buf, 0) >= 0) otherwise {
+    exit(255);
+  }
+
+  iofuncs.printf = (SerializerIOFuncs__printf_t) sioprintf;
+  iofuncs.write = (SerializerIOFuncs__write_t) siowrite;
+  iofuncs.scanf = (SerializerIOFuncs__scanf_t) sioscanf;
+  iofuncs.read = (SerializerIOFuncs__read_t) sioread;
 }
 
 

@@ -7,12 +7,10 @@
 #define HOOKFS_PULL (0u)
 #define HOOKFS_PUSH (1u)
 
-#define HOOKFS_PATH (0u)
-#define HOOKFS_HASH (1u << 1)
 
-
+typedef unsigned long long HookFsID;
 typedef const char *(*HookFsServer__FileTranslator) (
-  unsigned long long id, const char *path, int mode);
+  HookFsID id, const char *path, int mode);
 
 
 struct HookFsServer {

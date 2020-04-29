@@ -2,84 +2,57 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <macro.h>
-#include <simplestring.h>
 
-#include "simplestringio.h"
-
-
-static struct SimpleString *SimpleString_prepare (struct SimpleString *s, size_t len) {
-  if (s->allocated_len > len) {
-    return s;
-  }
-  char *new_str = realloc(s->str, len + 1);
-  should (new_str != NULL) otherwise {
-    return NULL;
-  }
-  s->str = new_str;
-  s->allocated_len = len + 1;
-  return s;
-}
-
-
-static struct SimpleString *SimpleString_append_len (
-    struct SimpleString * restrict s, const char * restrict str, size_t len) {
-  should (SimpleString_prepare(s, s->len + len) != NULL) otherwise {
-    return NULL;
-  }
-  memcpy(s->str + s->len, str, len);
-  s->len += len;
-  s->str[s->len] = '\0';
-  return s;
-}
-
-
-static struct SimpleString *SimpleString_append (
-    struct SimpleString * restrict s, const char * restrict str) {
-  return SimpleString_append_len(s, str, strlen(str));
-}
-
-
-int sioprintf (
-    struct SimpleString * restrict s, const char * restrict format, ...) {
-  char *buf;
-  va_list ap;
-  va_start(ap, format);
-  int ret = vasprintf(&buf, format, ap);
-  va_end(ap);
-  should (ret >= 0) otherwise {
-    return ret;
-  }
-
-  SimpleString_append_len(s->str, *buf, ret);
-  return ret;
-}
+#include "simpleiostream.h"
 
 
 size_t siowrite (
     const void * restrict ptr, size_t size, size_t count,
-    struct SimpleString * restrict s) {
+    GString * restrict s) {
   size *= count;
-  SimpleString_append_len(s->str, ptr, count);
+  g_string_append_len(s, ptr, size);
   return size;
 }
 
 
 int sioscanf (
-    struct SimpleString * restrict s, const char * restrict format, ...) {
-
+    struct SimpleIStream * restrict s, const char * restrict format, ...) {
+  fseek(s->f, s->i, SEEK_SET);
+  va_list args;
+  va_start(args, format);
+  int ret = fscanf(s->f, format, args);
+  va_end(args);
+  s->i = ftell(s->f);
+  return ret;
 }
 
 
 size_t sioread (
-    const void * restrict ptr, size_t size, size_t count,
-    struct SimpleString * restrict s) {
+    void * restrict ptr, size_t size, size_t count,
+    struct SimpleIStream * restrict s) {
   size *= count;
   if (s->i + size > s->len) {
     size = s->len - s->i;
   }
-  memcpy(ptr, s->str + s->i, size);
+  memcpy(ptr, s->data + s->i, size);
   s->i += size;
   return size;
+}
+
+
+void SimpleIStream_destroy (struct SimpleIStream *s) {
+  fclose(s->f);
+  free(s->data);
+}
+
+
+int SimpleIStream_init (struct SimpleIStream *s, void *ptr, size_t size) {
+  s->data = ptr;
+  s->len = size;
+  s->i = 0;
+  s->f = fmemopen(ptr, size, "r");
+  return 0;
 }

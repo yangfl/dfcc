@@ -1,6 +1,7 @@
 DEBUG = 1
 
-CFLAGS ?= -Wall -fPIC
+CPPFLAGS ?= -fdiagnostics-color=always
+CFLAGS ?= -Wall
 LDFLAGS ?=
 
 ifeq ($(DEBUG), 1)
@@ -9,12 +10,14 @@ else
 	CFLAGS += -Os
 	LDFLAGS += -s -flto
 endif
+
 CPPFLAGS += -I../common
-CFLAGS += -fms-extensions
-LDFLAGS += -shared -ldl
+CFLAGS += -fms-extensions -fPIC
+LDFLAGS += -shared -ldl -Wl,-z,defs
 
 SOURCES := \
-	hookfs.c intercept.c serializer.c simpleiostream.c
+	hookfs.c serializer.c simpleiostream.c socket.c \
+	../common/tinyglib.c
 OBJS := $(SOURCES:.c=.o)
 PREREQUISITES := $(SOURCES:.c=.d)
 

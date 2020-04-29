@@ -25,7 +25,7 @@ typedef int (*SerializerIOFuncs__scanf_t)
   (void * restrict, const char * restrict, ...)
   __attribute__((format(scanf, 2, 3)));
 typedef size_t (*SerializerIOFuncs__read_t)
-  (const void * restrict, size_t, size_t, void * restrict);
+  (void * restrict, size_t, size_t, void * restrict);
 
 
 struct SerializerIOFuncs {

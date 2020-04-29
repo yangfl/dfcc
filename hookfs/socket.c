@@ -1,86 +1,61 @@
-#include <alloca.h>  // alloca
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include "macro.h"
 
-#include "serializer.h"
+#include "socket.h"
 
 
-extern inline void serialize (FILE *stream, const void *data, size_t len);
-extern inline void serialize_string (FILE *stream, const char *data);
-extern inline void serialize_end (FILE *stream);
-extern inline void *deserialize_new (FILE *stream, size_t *read);
-
-
-void serialize_strv (FILE *stream, char * const *data) {
-  char buf[Hookfs_MAX_TOKEN_LEN];
-  FILE *tmp = fmemopen(buf, sizeof(buf), "w");
-  for (int i = 0; data[i] != NULL; i++) {
-    serialize_string(tmp, data[i]);
+ssize_t Socket_send (struct Socket *sock, const void *buf, size_t len) {
+  ssize_t ret = send(sock->fd, buf, len, 0);
+  should (ret >= 0) otherwise {
+    perror("send");
   }
-  size_t len = ftell(tmp);
-  fprintf(stream, "%zd_", len);
-  fseek(tmp, 0, SEEK_SET);
-  fwrite(buf, len, 1, stream);
-  fclose(tmp);
+  return ret;
 }
 
 
-void *deserialize (FILE *stream, void *buf, size_t size, size_t *read) {
-  bool buf_is_null = buf == NULL;
-  bool buf_too_short = false;
-
-  size_t len_to_read;
-  char delimiter;
-  should (fscanf(stream, "%zd%c", &len_to_read, &delimiter) == 2) otherwise {
-    // error: wrong format
-    return NULL;
+ssize_t Socket_recv (struct Socket *sock, void *buf, size_t len) {
+  ssize_t ret = recv(sock->fd, buf, len, 0);
+  should (ret >= 0) otherwise {
+    perror("recv");
   }
-  should (len_to_read <= Hookfs_MAX_TOKEN_LEN) otherwise {
-    // error: too long
-    return NULL;
-  }
-  should (!buf_is_null && len_to_read <= size) otherwise {
-    // warning: buf too short
-    buf = alloca(len_to_read);
-  }
-
-  if (buf_is_null) {
-    buf = malloc(len_to_read);
-    should (buf != NULL) otherwise {
-      // error: memory low
-      return NULL;
-    }
-  }
-  size_t data_read = fread(buf, 1, len_to_read, stream);
-  should (data_read == len_to_read) otherwise {
-    // error: length mismatch
-    if (buf_is_null) {
-      free(buf);
-    }
-    return NULL;
-  }
-
-  if (read != NULL) {
-    *read = data_read;
-  }
-  if (buf_too_short) {
-    return NULL;
-  }
-  return buf;
+  return ret;
 }
 
 
-char *deserialize_string (FILE *stream, char *buf, size_t size, size_t *read) {
-  size_t read_;
-  char *ret = deserialize(stream, buf, size - 1, &read_);
-  should (ret != NULL) otherwise return NULL;
-  ret[read_] = '\0';
-  if (read != NULL) {
-    *read = read_;
+void Socket_destroy (struct Socket *sock) {
+  close(sock->fd);
+}
+
+
+int Socket_init (struct Socket *sock, const char *path) {
+  int ret;
+
+  sock->fd = socket(PF_UNIX, SOCK_SEQPACKET, 0);
+  should (sock->fd >= 0) {
+    perror("sock");
+    return 1;
   }
+
+  do_once {
+    struct sockaddr_un addr = {
+      .sun_family = AF_UNIX,
+    };
+    size_t path_len = strlen(path);
+    memcpy(addr.sun_path + 1, path, path_len);
+    should (connect(sock->fd, (struct sockaddr *) &addr,
+        sizeof(addr.sun_family) + 1 + path_len) == 0) otherwise {
+      perror("connect");
+      ret = 1;
+      break;
+    }
+
+    return 0;
+  }
+
+  close(sock->fd);
   return ret;
 }
