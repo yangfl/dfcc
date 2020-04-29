@@ -11,13 +11,16 @@ struct SimpleString {
   //! The number of bytes that can be stored in the string.
   size_t allocated_len;
   //! The character data
-  char str[0];
+  union {
+    char str_[0];
+    char *str;
+  }
 };
 
 
 #define SIMPLE_STRING(x) \
-  ((struct SimpleString *) ((char *) (x) - offsetof(struct SimpleString, str)))
-#define SIMPLE_STRING_SIZE(x) ((x) + offsetof(struct SimpleString, str))
+  ((struct SimpleString *) ((char *) (x) - offsetof(struct SimpleString, str_)))
+#define SIMPLE_STRING_SIZE(x) ((x) + offsetof(struct SimpleString, str_))
 
 
 #endif /* SIMPLESTRING_H */

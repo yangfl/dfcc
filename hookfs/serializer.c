@@ -9,23 +9,29 @@
 #include "serializer.h"
 
 
-extern inline void serialize (struct SerializerIOFuncs *iofuncs, const void *data, size_t len);
-extern inline void serialize_string (struct SerializerIOFuncs *iofuncs, const char *data);
-extern inline void serialize_end (struct SerializerIOFuncs *iofuncs);
+extern inline int serialize (struct SerializerIOFuncs *iofuncs, const void *data, size_t len);
+extern inline int serialize_string (struct SerializerIOFuncs *iofuncs, const char *data);
+extern inline int serialize_end (struct SerializerIOFuncs *iofuncs);
 extern inline void *deserialize_new (struct SerializerIOFuncs *iofuncs, size_t *read);
 
 
-void serialize_strv (struct SerializerIOFuncs *iofuncs, char * const *data) {
+int serialize_strv (struct SerializerIOFuncs *iofuncs, char * const *data) {
   char buf[Hookfs_MAX_TOKEN_LEN];
-  FILE *tmp = fmemopen(buf, sizeof(buf), "w");
+  size_t buf_i = 0;
   for (int i = 0; data[i] != NULL; i++) {
-    serialize_string(iofuncs, data[i]);
+    size_t data_i_len = strlen(data[i]);
+    buf_i += snprintf(buf + buf_i, sizeof(buf) - buf_i, iofuncs->ostream, "%zu_", data_i_len);
+    memcpy(buf + buf_i, data[i], data_i_len);
+    buf_i += data_i_len;
   }
-  size_t len = ftell(tmp);
-  iofuncs->printf(iofuncs->ostream, "%zd_", len);
-  fseek(tmp, 0, SEEK_SET);
-  iofuncs->write(buf, len, 1, iofuncs->ostream);
-  fclose(tmp);
+
+  size_t buf_len = buf_i + 1;
+  int ret = iofuncs->printf(iofuncs->ostream, "%zd_", buf_len);
+  should (ret >= 0) otherwise {
+    return ret;
+  }
+  ret += iofuncs->write(buf, buf_len, 1, iofuncs->ostream);
+  return ret;
 }
 
 

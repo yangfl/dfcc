@@ -124,6 +124,8 @@ static bool get_wrapped_path (char new_path[], size_t size) {
 }
 
 #define HOOK_PATH(type, func, args, path, ...) { \
+  char buf[Hookfs_MAX_TOKEN_LEN]; \
+  iofuncs.ostream = buf;
   serialize_string(&iofuncs, # func); \
   __VA_ARGS__ \
   serialize_end(&iofuncs); \
@@ -343,7 +345,6 @@ static void __attribute__ ((destructor)) hookfs_del () {
 static void __attribute__ ((constructor)) hookfs_init () {
   iofuncs.ostream = middle_outer;
   iofuncs.printf = (SerializerIOFuncs__printf_t) fprintf;
-  iofuncs.puts = (SerializerIOFuncs__puts_t) fputs;
   iofuncs.write = (SerializerIOFuncs__write_t) fwrite;
   iofuncs.istream = outer_middle;
   iofuncs.scanf = (SerializerIOFuncs__scanf_t) fscanf;

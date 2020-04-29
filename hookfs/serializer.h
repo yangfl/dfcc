@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <simplestring.h>
+#include <macro.h>
 
 /**
  * @addtogroup Hookfs
@@ -19,21 +19,18 @@
 typedef int (*SerializerIOFuncs__printf_t)
   (void * restrict, const char * restrict, ...)
   __attribute__((format(printf, 2, 3)));
-typedef int (*SerializerIOFuncs__puts_t)
-  (const char * restrict, void * restrict);
-typedef int (*SerializerIOFuncs__write_t)
+typedef size_t (*SerializerIOFuncs__write_t)
   (const void * restrict, size_t, size_t, void * restrict);
 typedef int (*SerializerIOFuncs__scanf_t)
   (void * restrict, const char * restrict, ...)
   __attribute__((format(scanf, 2, 3)));
-typedef int (*SerializerIOFuncs__read_t)
+typedef size_t (*SerializerIOFuncs__read_t)
   (const void * restrict, size_t, size_t, void * restrict);
 
 
 struct SerializerIOFuncs {
   void *ostream;
   SerializerIOFuncs__printf_t printf;
-  SerializerIOFuncs__puts_t puts;
   SerializerIOFuncs__write_t write;
   void *istream;
   SerializerIOFuncs__scanf_t scanf;
@@ -48,9 +45,13 @@ struct SerializerIOFuncs {
  * @param data data to be serialized
  * @param len length of `data`
  */
-inline void serialize (struct SerializerIOFuncs *iofuncs, const void *data, size_t len) {
-  iofuncs->printf(iofuncs->ostream, "%zu_", len);
-  iofuncs->write(data, len, 1, iofuncs->ostream);
+inline int serialize (struct SerializerIOFuncs *iofuncs, const void *data, size_t len) {
+  int ret = iofuncs->printf(iofuncs->ostream, "%zu_", len);
+  should (ret >= 0) otherwise {
+    return ret;
+  }
+  ret += iofuncs->write(data, len, 1, iofuncs->ostream);
+  return ret;
 }
 
 #define serialize_printf(iofuncs, fmt, ...) { \
@@ -65,14 +66,14 @@ inline void serialize (struct SerializerIOFuncs *iofuncs, const void *data, size
  * @param iofuncs->ostream output FILE iofuncs->ostream
  * @param data a null-terminated string
  */
-inline void serialize_string (struct SerializerIOFuncs *iofuncs, const char *data) {
-  serialize(iofuncs->ostream, data, strlen(data));
+inline int serialize_string (struct SerializerIOFuncs *iofuncs, const char *data) {
+  return serialize(iofuncs->ostream, data, strlen(data));
 }
 
-void serialize_strv (struct SerializerIOFuncs *iofuncs, char * const *data);
+int serialize_strv (struct SerializerIOFuncs *iofuncs, char * const *data);
 
-inline void serialize_end (struct SerializerIOFuncs *iofuncs) {
-  iofuncs->puts("0\n", iofuncs->ostream);
+inline int serialize_end (struct SerializerIOFuncs *iofuncs) {
+  return iofuncs->printf(iofuncs->ostream, "0\n");
 }
 
 void *deserialize (struct SerializerIOFuncs *iofuncs, void *buf, size_t size, size_t *read);
