@@ -2,10 +2,14 @@
 #define SIMPLESTRING_H
 
 
+//! @memberof SimpleString
+typedef unsigned int SimpleString__size_t;
+
+
 //! @ingroup Common
 struct SimpleString {
   //! The length of the string, not including the terminating nul byte.
-  unsigned int len;
+  SimpleString__size_t len;
   //! The character data
   char str[0];
 };

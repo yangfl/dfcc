@@ -69,7 +69,7 @@
 /**
  * @brief Make a breakable code block.
  *
- * `break` statement is useable in the block.
+ * `break` statement is available in the block.
  *
  * @code{.c}
   if (write_log) do_once {
@@ -80,6 +80,26 @@
  */
 #define do_once switch (1) case 1:
 
+/**
+ * @brief Make a goto-able code block.
+ *
+ * `break` statement is available in the block.
+ *
+ * @code{.c}
+  ...
+  named_block(unused): {
+    // never exectued
+    exit(0);
+  }
+  named_block(fail): {
+    exit(1);
+  }
+  goto fail;
+  ...
+ * @endcode
+ *
+ * @param n name of the block
+ */
 #define named_block(n) if (0) n: switch (1) case 1
 
 /**

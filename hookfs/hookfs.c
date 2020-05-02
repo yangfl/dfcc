@@ -27,7 +27,7 @@
  */
 
 
-struct SerializerIOFuncs iofuncs;
+struct Serializer serdes_;
 struct Socket sock;
 
 #define check(func) \
@@ -80,54 +80,53 @@ static void *resolve (const char *symbol) {
   type libc_ ## symbol () __attribute__ ((ifunc ("resolve_" # symbol))); \
   type symbol
 
-
-/**
- * @brief Reads the wrapped path from controller.
- *
- * @param[out] new_path wrapped path
- * @param size maximum length of `new_path`
- * @return `true` if `new_path` vaild
- */
-static bool get_wrapped_path (char new_path[], size_t size) {
-  should (deserialize_string(&iofuncs, new_path, size, NULL) != NULL) otherwise {
-    fprintf(stderr, "get_wrapped_path: Error\n");
-    exit(1);
-  }
-  //getc(outer_middle);  // '\n'
-  if (new_path[0] == '\0') {
-    return false;
-  }
-  return true;
-}
-
-
-/**
- * @brief Get and point `path` to the wrapped path.
- *
- * @param path
- */
-#define GET_PATH(path) { \
-  char *new_path = alloca(PATH_MAX); \
-  if (get_wrapped_path(new_path, sizeof(new_path))) { \
-    (path) = new_path; \
-  } \
-}
-
 #define HOOK(type, func, args, ...) { \
-  serialize_string(&iofuncs, # func); \
+  struct Serializer serdes = serdes_; \
+  GString buf; \
+  g_string_init(&buf, NULL); \
+  serdes.ostream = &buf; \
+  \
+  serialize_literal(&serdes, # func); \
   __VA_ARGS__ \
-  serialize_end(&iofuncs); \
+  serialize_end(&serdes); \
+  \
+  should (Socket_send(&sock, buf.data, buf.len) >= 0) otherwise { \
+    exit(255); \
+  } \
+  g_string_destroy(&buf, false); \
+  \
   type ret = libc_ ## func args; \
   return ret; \
 }
 
 #define HOOK_PATH(type, func, args, path, ...) { \
-  char buf[Hookfs_MAX_TOKEN_LEN]; \
-  iofuncs.ostream = buf; \
-  serialize_string(&iofuncs, # func); \
+  struct Serializer serdes = serdes_; \
+  GString buf; \
+  g_string_init(&buf, NULL); \
+  serdes.ostream = &buf; \
+  \
+  serialize_literal(&serdes, # func); \
   __VA_ARGS__ \
-  serialize_end(&iofuncs); \
-  GET_PATH(path); \
+  serialize_end(&serdes); \
+  \
+  mtx_lock(&sock.mtx); \
+  should (Socket_send(&sock, buf.data, buf.len) >= 0) otherwise { \
+    exit(255); \
+  } \
+  g_string_destroy(&buf, false); \
+  \
+  char recv_buf[Hookfs_MAX_TOKEN_LEN]; \
+  serdes.istream = recv_buf; \
+  should (Socket_recv(&sock, recv_buf, sizeof(recv_buf)) >= 0) otherwise { \
+    exit(255); \
+  } \
+  mtx_unlock(&sock.mtx); \
+  \
+  Serializer__size_t new_path_len = *(Serializer__size_t *)recv_buf; \
+  if (new_path_len > 0) { \
+    recv_buf[new_path_len + sizeof(new_path_len)] = '\0'; \
+    (path) = recv_buf + sizeof(new_path_len); \
+  } \
   type ret = libc_ ## func args; \
   return ret; \
 }
@@ -198,69 +197,69 @@ WRAP(int, execv) (const char *path, char *const argv[]) {
 
 WRAP(int, execve) (const char *path, char *const argv[], char *const envp[])
 HOOK(int, execve, (path, argv, envp),
-  serialize_string(&iofuncs, path);
-  serialize_strv(&iofuncs, argv);
-  serialize_strv(&iofuncs, envp);
+  serialize_string(&serdes, path);
+  serialize_strv(&serdes, argv);
+  serialize_strv(&serdes, envp);
 )
 
 
 WRAP(int, execvp) (const char *file, char *const argv[])
 HOOK(int, execvp, (file, argv),
-  serialize_string(&iofuncs, file);
-  serialize_strv(&iofuncs, argv);
+  serialize_string(&serdes, file);
+  serialize_strv(&serdes, argv);
 )
 
 
 WRAP(int, access) (const char *pathname, int mode)
 HOOK_PATH(int, access, (pathname, mode), pathname,
-  serialize_string(&iofuncs, pathname);
-  serialize_printf(&iofuncs, "%d", mode);
+  serialize_string(&serdes, pathname);
+  serialize_printf(&serdes, "%d", mode);
 )
 
 
 WRAP(int, stat) (const char *pathname, struct stat *statbuf)
 HOOK_PATH(int, stat, (pathname, statbuf), pathname,
-  serialize_string(&iofuncs, pathname);
-  serialize_printf(&iofuncs, "%p", statbuf);
+  serialize_string(&serdes, pathname);
+  serialize_printf(&serdes, "%p", statbuf);
 )
 
 
 WRAP(int, lstat) (const char *pathname, struct stat *statbuf)
 HOOK_PATH(int, lstat, (pathname, statbuf), pathname,
-  serialize_string(&iofuncs, pathname);
-  serialize_printf(&iofuncs, "%p", statbuf);
+  serialize_string(&serdes, pathname);
+  serialize_printf(&serdes, "%p", statbuf);
 )
 
 
 /*
 WRAP(int, open) (const char *path, int oflag, mode_t mode)
 HOOK_PATH(int, open, (path, oflag, mode), path,
-  serialize_string(&iofuncs, path);
-  serialize_printf(&iofuncs, "%d", oflag);
-  serialize_printf(&iofuncs, "%d", mode);
+  serialize_string(&serdes, path);
+  serialize_printf(&serdes, "%d", oflag);
+  serialize_printf(&serdes, "%d", mode);
 )
 
 
 WRAP(int, open64) (const char *path, int oflag, mode_t mode)
 HOOK_PATH(int, open64, (path, oflag, mode), path,
-  serialize_string(&iofuncs, path);
-  serialize_printf(&iofuncs, "%d", oflag);
-  serialize_printf(&iofuncs, "%d", mode);
+  serialize_string(&serdes, path);
+  serialize_printf(&serdes, "%d", oflag);
+  serialize_printf(&serdes, "%d", mode);
 )
 */
 
 
 WRAP(FILE *, fopen) (const char *filename, const char *mode)
 HOOK_PATH(FILE *, fopen, (filename, mode), filename,
-  serialize_string(&iofuncs, filename);
-  serialize_string(&iofuncs, mode);
+  serialize_string(&serdes, filename);
+  serialize_string(&serdes, mode);
 )
 
 
 WRAP(FILE *, fopen64) (const char *filename, const char *mode)
 HOOK_PATH(FILE *, fopen64, (filename, mode), filename,
-  serialize_string(&iofuncs, filename);
-  serialize_string(&iofuncs, mode);
+  serialize_string(&serdes, filename);
+  serialize_string(&serdes, mode);
 )
 
 
@@ -276,36 +275,36 @@ HOOK(int, fclose64, "0", "%p\n", stream)
 
 WRAP(FILE *, freopen) (const char *filename, const char *mode, FILE *stream)
 HOOK_PATH(FILE *, freopen, (filename, mode, stream), filename,
-  serialize_string(&iofuncs, filename);
-  serialize_string(&iofuncs, mode);
-  serialize_printf(&iofuncs, "%p", stream);
+  serialize_string(&serdes, filename);
+  serialize_string(&serdes, mode);
+  serialize_printf(&serdes, "%p", stream);
 )
 
 
 WRAP(FILE *, freopen64) (const char *filename, const char *mode, FILE *stream)
 HOOK_PATH(FILE *, freopen64, (filename, mode, stream), filename,
-  serialize_string(&iofuncs, filename);
-  serialize_string(&iofuncs, mode);
-  serialize_printf(&iofuncs, "%p", stream);
+  serialize_string(&serdes, filename);
+  serialize_string(&serdes, mode);
+  serialize_printf(&serdes, "%p", stream);
 )
 
 
 WRAP(int, rename) (const char *oldname, const char *newname)
 HOOK(int, rename, (oldname, newname),
-  serialize_string(&iofuncs, oldname);
-  serialize_string(&iofuncs, newname);
+  serialize_string(&serdes, oldname);
+  serialize_string(&serdes, newname);
 )
 
 
 WRAP(int, unlink) (const char *filename)
 HOOK(int, unlink, (filename),
-  serialize_string(&iofuncs, filename);
+  serialize_string(&serdes, filename);
 )
 
 
 WRAP(int, remove) (const char *filename)
 HOOK(int, remove, (filename),
-  serialize_string(&iofuncs, filename);
+  serialize_string(&serdes, filename);
 )
 
 
@@ -319,7 +318,7 @@ HOOK(FILE *, tmpfile64, ())
 
 WRAP(DIR *, opendir) (const char *name)
 HOOK_PATH(DIR *, opendir, (name), name,
-  serialize_string(&iofuncs, name);
+  serialize_string(&serdes, name);
 )
 
 
@@ -336,7 +335,8 @@ WRAP(ssize_t, read) (int fd, void *buf, size_t count) {
 
 
 static void __attribute__ ((destructor)) hookfs_del () {
-
+  Socket_send(&sock, NULL, 0);
+  Socket_destroy(&sock);
 }
 
 
@@ -357,14 +357,24 @@ static void __attribute__ ((constructor)) hookfs_init () {
     exit(255);
   }
 
-  should (Socket_send(&sock, buf, 0) >= 0) otherwise {
+  serdes_.printf = (Serializer__printf_t) sioprintf;
+  serdes_.write = (Serializer__write_t) siowrite;
+  serdes_.scanf = (Serializer__scanf_t) sioscanf;
+  serdes_.read = (Serializer__read_t) sioread;
+
+  struct Serializer serdes = serdes_;
+  GString buf;
+  g_string_init(&buf, NULL);
+  serdes.istream = &buf;
+  serialize_literal(&serdes, "-id");
+  serialize_string(&serdes, hookfs_id);
+  serialize_end(&serdes);
+
+  should (Socket_send(&sock, buf.data, buf.len) >= 0) otherwise {
     exit(255);
   }
 
-  iofuncs.printf = (SerializerIOFuncs__printf_t) sioprintf;
-  iofuncs.write = (SerializerIOFuncs__write_t) siowrite;
-  iofuncs.scanf = (SerializerIOFuncs__scanf_t) sioscanf;
-  iofuncs.read = (SerializerIOFuncs__read_t) sioread;
+  g_string_destroy(&buf, false);
 }
 
 

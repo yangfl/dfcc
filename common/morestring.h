@@ -15,7 +15,7 @@
 #include <glib.h>
 
 
-#define CONSTSTR(s) s, strlen(s)
+#define CONSTSTR(s) (s), strlen(s)
 #define strscmp(str1, str2) strncmp(str1, str2, strlen(str2))
 
 

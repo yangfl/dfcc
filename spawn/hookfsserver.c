@@ -8,7 +8,10 @@
 #include <gio/gio.h>
 #include <gio/gunixsocketaddress.h>
 
+#include <simplestring.h>
+
 #include "../file/common.h"
+#include "../hookfs/limit.h"
 #include "../hookfs/serializer.h"
 #include "hookfsserver.h"
 
@@ -52,7 +55,7 @@ int HookFsServer__send (int fd, const char *virtual_path, const char *real_path,
 }
 
 
-static bool HookFsServer__remove_sockfile (const char *path) {
+static bool G_GNUC_UNUSED HookFsServer__remove_sockfile (const char *path) {
   if (!g_file_test(path, G_FILE_TEST_EXISTS)) {
     return true;
   }
@@ -74,14 +77,12 @@ void HookFsServer_destroy (struct HookFsServer *server) {
 }
 
 
-#define BLOCK_SIZE 65536
-
-
+//! @memberof HookFsServer
 struct HookFsServerConnection {
   GSocketConnection *connection;
   struct HookFsServer *server;
-  unsigned long long id;
-  char message[BLOCK_SIZE];
+  HookFsID id;
+  char message[Hookfs_MAX_PACKET_LEN];
 };
 
 
@@ -100,17 +101,60 @@ void HookFsServerConnection_message_ready (
     }
   }
 
-  if (count <= 0) {
-    g_print("Connection closed.\n");
-    g_object_unref(conn->connection);
-    g_free(conn);
-    return;
+  if unlikely (count <= 0) {
+    goto close;
   }
 
   g_message("Message was: \"%s\"", conn->message);
+  int tokens[Hookfs_MAX_TOKENS];
+  int tokens_len = 0;
+
+  for (int i = 0;;) {
+    SimpleString__size_t next_token_len =
+      *((SimpleString__size_t *) (conn->message + i));
+    if (next_token_len == 0) {
+      break;
+    }
+    tokens[tokens_len] = i;
+    tokens_len++;
+    i += next_token_len;
+  }
+
+  if unlikely (tokens_len == 0) {
+    goto next;
+  }
+
+  const char *func_name = ((struct SimpleString *) (conn->message))->str;
+  if (func_name[0] == '-') {
+    should (tokens_len > 1) otherwise {
+      // error
+      goto close;
+    }
+    const char *func_arg1 = tokens_len > 1 ?
+      ((struct SimpleString *) (conn->message + tokens[1]))->str : NULL;
+    if (strcmp(func_name, "-id") == 0) {
+      char *func_arg1_end;
+      conn->id = strtoull(func_arg1, &func_arg1_end, 10);
+      should (*func_arg1_end == '\0') otherwise {
+        // error
+        goto close;
+      }
+    }
+  }
+
+next:
+  // schedule next read
   g_input_stream_read_async(
     istream, conn->message, sizeof(conn->message),
     G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_ready, conn);
+  return;
+
+close:
+  // Connection closed
+  g_print("Connection closed.\n");
+  g_object_unref(conn->connection);
+  g_free(conn);
+  return;
 }
 
 

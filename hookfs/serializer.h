@@ -6,86 +6,104 @@
 #include <stdio.h>
 
 #include <macro.h>
+#include <simplestring.h>
 
-/**
- * @addtogroup Hookfs
- * @{
- */
+#include "limit.h"
 
 
-#define Hookfs_MAX_TOKEN_LEN 8192
-
-
-typedef int (*SerializerIOFuncs__printf_t)
+//! @memberof Serializer
+typedef int (*Serializer__printf_t)
   (void * restrict, const char * restrict, ...)
   __attribute__((format(printf, 2, 3)));
-typedef size_t (*SerializerIOFuncs__write_t)
+//! @memberof Serializer
+typedef size_t (*Serializer__write_t)
   (const void * restrict, size_t, size_t, void * restrict);
-typedef int (*SerializerIOFuncs__scanf_t)
+//! @memberof Serializer
+typedef int (*Serializer__scanf_t)
   (void * restrict, const char * restrict, ...)
   __attribute__((format(scanf, 2, 3)));
-typedef size_t (*SerializerIOFuncs__read_t)
+//! @memberof Serializer
+typedef size_t (*Serializer__read_t)
   (void * restrict, size_t, size_t, void * restrict);
+//! @memberof Serializer
+typedef SimpleString__size_t Serializer__size_t;
 
 
-struct SerializerIOFuncs {
+//! @ingroup Hookfs
+struct Serializer {
   void *ostream;
-  SerializerIOFuncs__printf_t printf;
-  SerializerIOFuncs__write_t write;
+  Serializer__printf_t printf;
+  Serializer__write_t write;
   void *istream;
-  SerializerIOFuncs__scanf_t scanf;
-  SerializerIOFuncs__read_t read;
+  Serializer__scanf_t scanf;
+  Serializer__read_t read;
 };
 
 
 /**
+ * @memberof Serializer
  * @brief Serializes a token.
  *
- * @param iofuncs->ostream output FILE iofuncs->ostream
+ * @param serdes Serializer
  * @param data data to be serialized
  * @param len length of `data`
  */
-inline int serialize (struct SerializerIOFuncs *iofuncs, const void *data, size_t len) {
-  int ret = iofuncs->printf(iofuncs->ostream, "%zu_", len);
+inline int serialize (struct Serializer *serdes, const void *data, Serializer__size_t len) {
+  int ret = serdes->write(&len, sizeof(len), 1, serdes->ostream);
   should (ret >= 0) otherwise {
     return ret;
   }
-  ret += iofuncs->write(data, len, 1, iofuncs->ostream);
+  ret += serdes->write(data, len, 1, serdes->ostream);
   return ret;
 }
 
-#define serialize_printf(iofuncs, fmt, ...) { \
+//! @memberof Serializer
+#define serialize_printf(serdes, fmt, ...) { \
   char buf[Hookfs_MAX_TOKEN_LEN]; \
-  size_t len = snprintf(buf, sizeof(buf), (fmt), __VA_ARGS__); \
-  serialize((iofuncs)->ostream, buf, len); \
+  SimpleString__size_t len = snprintf(buf, sizeof(buf), (fmt), __VA_ARGS__); \
+  serialize((serdes)->ostream, buf, len); \
 }
 
 /**
+ * @memberof Serializer
  * @brief Serializes a null-terminated string.
  *
- * @param iofuncs->ostream output FILE iofuncs->ostream
- * @param data a null-terminated string
+ * @param serdes->ostream output FILE serdes->ostream
+ * @param str a null-terminated string
  */
-inline int serialize_string (struct SerializerIOFuncs *iofuncs, const char *data) {
-  return serialize(iofuncs->ostream, data, strlen(data));
+inline int serialize_string (struct Serializer *serdes, const char *str) {
+  return serialize(serdes->ostream, str, strlen(str) + 1);
 }
 
-int serialize_strv (struct SerializerIOFuncs *iofuncs, char * const *data);
+/**
+ * @memberof Serializer
+ * @brief Serializes a literal string.
+ *
+ * @param serdes->ostream output FILE serdes->ostream
+ * @param str a literal string
+ */
+#define serialize_literal(serdes, str) \
+  serialize((serdes)->ostream, (str), sizeof(str))
 
-inline int serialize_end (struct SerializerIOFuncs *iofuncs) {
-  return iofuncs->printf(iofuncs->ostream, "0\n");
+//! @memberof Serializer
+int serialize_strv (struct Serializer *serdes, char * const *data);
+
+//! @memberof Serializer
+inline int serialize_end (struct Serializer *serdes) {
+  SimpleString__size_t len = 0;
+  return serdes->write(&len, sizeof(len), 1, serdes->ostream);
 }
 
-void *deserialize (struct SerializerIOFuncs *iofuncs, void *buf, size_t size, size_t *read);
+//! @memberof Serializer
+void *deserialize (struct Serializer *serdes, void *buf, size_t size, size_t *read);
 
-inline void *deserialize_new (struct SerializerIOFuncs *iofuncs, size_t *read) {
-  return deserialize(iofuncs->istream, NULL, 0, read);
+//! @memberof Serializer
+inline void *deserialize_new (struct Serializer *serdes, size_t *read) {
+  return deserialize(serdes->istream, NULL, 0, read);
 }
 
-char *deserialize_string (struct SerializerIOFuncs *iofuncs, char *buf, size_t size, size_t *read);
-
-
-/**@}*/
+//! @memberof Serializer
+char *deserialize_string (struct Serializer *serdes, char *buf, size_t size, size_t *read);
 
 
 #endif /* HOOKFS_SERIALIZER_H */

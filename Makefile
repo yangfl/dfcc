@@ -77,4 +77,8 @@ $(OUT)/hookfs.so: hookfs/hookfs.so
 
 .PHONY: cloc
 cloc:
-	cloc --exclude-dir=vendor,html --exclude-ext=d .
+	cloc --exclude-dir=vendor,html,tmp,out --exclude-ext=d .
+
+.PHONY: doc
+doc:
+	doxygen

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <threads.h>
 #include <unistd.h>
 
 #include "macro.h"
@@ -28,11 +29,17 @@ ssize_t Socket_recv (struct Socket *sock, void *buf, size_t len) {
 
 void Socket_destroy (struct Socket *sock) {
   close(sock->fd);
+  mtx_destroy(&sock->mtx);
 }
 
 
 int Socket_init (struct Socket *sock, const char *path) {
   int ret;
+
+  should (mtx_init(&sock->mtx, mtx_plain) == thrd_success) {
+    perror("mtx_init");
+    return 1;
+  }
 
   sock->fd = socket(PF_UNIX, SOCK_SEQPACKET, 0);
   should (sock->fd >= 0) {

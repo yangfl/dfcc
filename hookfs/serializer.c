@@ -9,39 +9,37 @@
 #include "serializer.h"
 
 
-extern inline int serialize (struct SerializerIOFuncs *iofuncs, const void *data, size_t len);
-extern inline int serialize_string (struct SerializerIOFuncs *iofuncs, const char *data);
-extern inline int serialize_end (struct SerializerIOFuncs *iofuncs);
-extern inline void *deserialize_new (struct SerializerIOFuncs *iofuncs, size_t *read);
+extern inline int serialize (struct Serializer *serdes, const void *data, Serializer__size_t len);
+extern inline int serialize_string (struct Serializer *serdes, const char *data);
+extern inline int serialize_end (struct Serializer *serdes);
+extern inline void *deserialize_new (struct Serializer *serdes, size_t *read);
 
 
-int serialize_strv (struct SerializerIOFuncs *iofuncs, char * const *data) {
+int serialize_strv (struct Serializer *serdes, char * const *data) {
   char buf[Hookfs_MAX_TOKEN_LEN];
-  size_t buf_i = 0;
+
+  Serializer__size_t buf_i = 0;
   for (int i = 0; data[i] != NULL; i++) {
-    size_t data_i_len = strlen(data[i]);
-    buf_i += snprintf(buf + buf_i, sizeof(buf) - buf_i, iofuncs->ostream, "%zu_", data_i_len);
+    Serializer__size_t data_i_len = strlen(data[i]);
+    memcpy(buf + buf_i, &data_i_len, sizeof(data_i_len));
+    buf_i += sizeof(data_i_len);
     memcpy(buf + buf_i, data[i], data_i_len);
     buf_i += data_i_len;
   }
+  Serializer__size_t data_end = 0;
+  memcpy(buf + buf_i, &data_end, sizeof(data_end));
+  buf_i += sizeof(data_end);
 
-  size_t buf_len = buf_i + 1;
-  int ret = iofuncs->printf(iofuncs->ostream, "%zd_", buf_len);
-  should (ret >= 0) otherwise {
-    return ret;
-  }
-  ret += iofuncs->write(buf, buf_len, 1, iofuncs->ostream);
-  return ret;
+  return serialize(serdes, buf, buf_i + 1);
 }
 
 
-void *deserialize (struct SerializerIOFuncs *iofuncs, void *buf, size_t size, size_t *read) {
+void *deserialize (struct Serializer *serdes, void *buf, size_t size, size_t *read) {
   bool buf_is_null = buf == NULL;
   bool buf_too_short = false;
 
-  size_t len_to_read;
-  char delimiter;
-  should (iofuncs->scanf(iofuncs->istream, "%zu%c", &len_to_read, &delimiter) == 2) otherwise {
+  Serializer__size_t len_to_read;
+  should (serdes->read(&len_to_read, sizeof(len_to_read), 1, serdes->istream) == sizeof(len_to_read)) otherwise {
     // error: wrong format
     return NULL;
   }
@@ -61,7 +59,7 @@ void *deserialize (struct SerializerIOFuncs *iofuncs, void *buf, size_t size, si
       return NULL;
     }
   }
-  size_t data_read = iofuncs->read(buf, 1, len_to_read, iofuncs->istream);
+  size_t data_read = serdes->read(buf, 1, len_to_read, serdes->istream);
   should (data_read == len_to_read) otherwise {
     // error: length mismatch
     if (buf_is_null) {
@@ -80,9 +78,9 @@ void *deserialize (struct SerializerIOFuncs *iofuncs, void *buf, size_t size, si
 }
 
 
-char *deserialize_string (struct SerializerIOFuncs *iofuncs, char *buf, size_t size, size_t *read) {
+char *deserialize_string (struct Serializer *serdes, char *buf, size_t size, size_t *read) {
   size_t read_;
-  char *ret = deserialize(iofuncs, buf, size - 1, &read_);
+  char *ret = deserialize(serdes, buf, size - 1, &read_);
   should (ret != NULL) otherwise return NULL;
   ret[read_] = '\0';
   if (read != NULL) {

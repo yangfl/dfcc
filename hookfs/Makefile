@@ -13,7 +13,7 @@ endif
 
 CPPFLAGS += -I../common
 CFLAGS += -fms-extensions -fPIC
-LDFLAGS += -shared -ldl -Wl,-z,defs
+LDFLAGS += -shared -ldl -Wl,-z,defs -lpthread
 
 SOURCES := \
 	hookfs.c serializer.c simpleiostream.c socket.c \
