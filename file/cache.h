@@ -98,9 +98,9 @@ bool Cache_verify (
  * @return the associated FileEntryE, or NULL if error happened [transfer-none]
  */
 struct FileEntryE *Cache_get (
-    struct Cache *cache, struct FileHash *hash, GError **error);
+    struct Cache *cache, FileHash hash, GError **error);
 struct FileEntryE *Cache_try_get (
-    struct Cache *cache, struct FileHash *hash, GError **error);
+    struct Cache *cache, FileHash hash, GError **error);
 /**
  * @memberof Cache
  * @brief Stores a piece of data into Cache.

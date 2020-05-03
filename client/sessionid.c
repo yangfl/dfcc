@@ -11,10 +11,12 @@
 SessionID Client__get_session_id () {
   static SessionID sid = 0;
 
+  // return cached sid
   if (sid != 0) {
     return sid;
   }
 
+  // generate sid from /etc/machine-id
   do_once {
     FILE *machineid = g_fopen("/etc/machine-id", "r");
     if (machineid == NULL) {
@@ -36,6 +38,7 @@ SessionID Client__get_session_id () {
     return sid;
   }
 
-  sid = 0x123456;
+  // fallback
+  sid = g_random_int();
   return sid;
 }

@@ -1,10 +1,8 @@
-#ifndef DFCC_FILE_COMMON_H
-#define DFCC_FILE_COMMON_H
+#ifndef DFCC_WRAPPER_FILE_H
+#define DFCC_WRAPPER_FILE_H
 /**
- * @defgroup File File
- * @brief File related code
- * @{
- * @defgroup FileCommon File Common
+ * @ingroup Wrapper
+ * @defgroup FileIO FileIO
  * @brief Common variables and wrapped IO functions
  * @{
  */
@@ -17,16 +15,13 @@
 #include <macro.h>
 
 
-extern GQuark DFCC_FILE_IO_ERROR;
-
-
-void dfcc_file_io_set_error (GError **error, const char *format);
+void file_io_set_error (GError **error, const char *format);
 
 #define WRAP_IO_GERROR(type, func, params, args, test, msg) \
 inline type func ## _e params { \
   type ret = func args; \
   should (ret test) otherwise { \
-    dfcc_file_io_set_error(error, msg ": %s"); \
+    file_io_set_error(error, msg ": %s"); \
   } \
   return ret; \
 }
@@ -54,8 +49,6 @@ WRAP_IO_GERROR(
   (ptr, size, nmemb, stream), == 0, "Failed to fwrite")
 
 
-/**
- * @}
- * @}
- */
-#endif /* DFCC_FILE_COMMON_H */
+/**@}*/
+
+#endif /* DFCC_WRAPPER_FILE_H */

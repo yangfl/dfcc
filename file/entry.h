@@ -17,7 +17,7 @@ struct FileEntry {
   //! The path to a file.
   char *path;
   //! The hash value of the file.
-  struct FileHash hash;
+  FileHash hash;
 };
 
 
@@ -28,7 +28,6 @@ struct FileEntry {
  * @param entry a FileEntry
  */
 inline void FileEntry_destroy (struct FileEntry *entry) {
-  FileHash_destroy(&entry->hash);
 }
 
 /**
@@ -48,7 +47,7 @@ void FileEntry_free (void *entry);
  * @return 0 if success, otherwize nonzero
  */
 int FileEntry_init_with_hash (
-    struct FileEntry *entry, char *path, struct FileHash *hash);
+    struct FileEntry *entry, char *path, FileHash hash);
 /**
  * @memberof FileEntry
  * @brief Initializes a FileEntry with the file `path`.
@@ -111,7 +110,7 @@ inline void FileEntryE_destroy (struct FileEntryE *entrye) {
  * @return 0 if success, otherwize nonzero
  */
 int FileEntryE_init_full (
-    struct FileEntryE *entrye, char *path, GStatBuf *sb, struct FileHash *hash);
+    struct FileEntryE *entrye, char *path, GStatBuf *sb, FileHash hash);
 /**
  * @memberof FileEntryE
  * @brief Initializes a FileEntryE with the information of a file.
@@ -125,6 +124,6 @@ int FileEntryE_init_full (
  */
 int FileEntryE_init (
     struct FileEntryE *entrye, char *path,
-    GStatBuf *sb, struct FileHash *hash, GError **error);
+    GStatBuf *sb, FileHash hash, GError **error);
 
 #endif /* DFCC_FILE_ENTRY_H */

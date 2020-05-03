@@ -85,7 +85,7 @@ struct HookedSubprocess {
   enum HookedSubprocessPendingType pending_type;
   union {
     char *pending_path;
-    struct FileHash pending_hash;
+    FileHash pending_hash;
   };
 };
 

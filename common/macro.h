@@ -66,6 +66,7 @@
  */
 #define otherwise ; else
 
+
 /**
  * @brief Make a breakable code block.
  *
@@ -101,6 +102,8 @@
  * @param n name of the block
  */
 #define named_block(n) if (0) n: switch (1) case 1
+
+#include "controlflow.h"
 
 /**
  * @brief Calculates the maximum of `a` and `b`.

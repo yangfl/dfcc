@@ -22,19 +22,17 @@ void FileEntry_free (void *entry) {
 
 
 int FileEntry_init_with_hash (
-    struct FileEntry *entry, char *path, struct FileHash *hash) {
-  int ret = FileHash_init_copy(&entry->hash, hash);
-  should (ret == 0) otherwise return ret;
-
+    struct FileEntry *entry, char *path, FileHash hash) {
   entry->path = path;
+  entry->hash = hash;
   return 0;
 }
 
 
 int FileEntry_init (
     struct FileEntry *entry, char *path, GError **error) {
-  int ret = FileHash_init_from_file(&entry->hash, path, error);
-  should (ret == 0) otherwise return ret;
+  entry->hash = FileHash_from_file(path, error);
+  return_if_fail(entry->hash != 0) 1;
 
   entry->path = path;
   return 0;
@@ -43,7 +41,7 @@ int FileEntry_init (
 
 int FileEntryE_init_full (
     struct FileEntryE *entrye, char *path,
-    GStatBuf *sb, struct FileHash *hash) {
+    GStatBuf *sb, FileHash hash) {
   int ret = FileEntry_init_with_hash((struct FileEntry *) entrye, path, hash);
   should (ret == 0) otherwise return ret;
 
@@ -53,14 +51,14 @@ int FileEntryE_init_full (
 
 int FileEntryE_init (
     struct FileEntryE *entrye, char *path,
-    GStatBuf *sb, struct FileHash *hash, GError **error) {
+    GStatBuf *sb, FileHash hash, GError **error) {
   int ret;
-  if (hash == NULL) {
+  if (hash == 0) {
     ret = FileEntry_init((struct FileEntry *) entrye, path, error);
   } else {
     ret = FileEntry_init_with_hash((struct FileEntry *) entrye, path, hash);
   }
-  should (ret == 0) otherwise return ret;
+  return_if_fail(ret == 0) ret;
 
   if (sb == NULL) {
     return FileETag_init_from_path(&entrye->etag, path, error);

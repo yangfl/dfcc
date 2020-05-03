@@ -1,8 +1,8 @@
 #include <gmodule.h>
 
 #include <macro.h>
+#include <wrapper/file.h>
 
-#include "common.h"
 #include "entry.h"
 #include "localindex.h"
 

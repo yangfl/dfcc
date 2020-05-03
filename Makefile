@@ -27,15 +27,17 @@ LDFLAGS += $(LIBS_LDFLAGS)
 SOURCES := \
 	vendor/whereami/src/whereami.c \
 	common/broadcast.c common/hexstring.c common/morestring.c \
+	common/wrapper/file.c common/wrapper/mappedfile.c common/wrapper/soup.c \
 	config/config.c config/serverurl.c \
 	config/source/args.c config/source/default.c config/source/conffile.c \
 		config/source/mux.c \
-	file/common.c file/cache.c file/entry.c file/etag.c file/hash.c \
+	file/cache.c file/entry.c file/etag.c file/hash.c \
 	file/localindex.c file/remoteindex.c \
 	spawn/hookfsserver.c spawn/hookedsubprocess.c spawn/subprocess.c \
-	client/client.c client/ccargs.c client/local.c \
+	ccargs/ccargs.c \
+	client/client.c client/local.c \
 		client/remote.c client/sessionid.c \
-	server/server.c server/common.c server/context.c server/debug.c \
+	server/server.c server/context.c server/debug.c \
 		server/handler.c server/job.c server/session.c \
 	dfcc.c
 OBJS := $(SOURCES:.c=.o)

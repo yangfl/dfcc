@@ -1,17 +1,24 @@
-#ifndef DFCC_CLIENT_CCARGS_H
-#define DFCC_CLIENT_CCARGS_H
+#ifndef DFCC_CCARGS_H
+#define DFCC_CCARGS_H
 
 #include <stdbool.h>
 
+/**
+ * @defgroup CCargs CCargs
+ * @brief Deal with C compiler args
+ * @{
+ */
+
 
 /**
- * @ingroup Client
  * @brief Tests if `cc_argv` is suitable for remote compilation.
  *
  * @param[in,out] cc_argv pointer to compiler's argument vector [array zero-terminated=1]
  * @return `true` if `cc_argv` is suitable for remote compilation
  */
-bool Client_can_run_remotely (char **cc_argv[]);
+bool CCargs_can_run_remotely (char **cc_argv[]);
 
 
-#endif /* DFCC_CLIENT_CCARGS_H */
+/**@}*/
+
+#endif /* DFCC_CCARGS_H */

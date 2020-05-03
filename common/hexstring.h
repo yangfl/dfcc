@@ -1,8 +1,7 @@
 #ifndef HEXSTRING_H
 #define HEXSTRING_H
 /**
- * @addtogroup Common
- * @{
+ * @ingroup Common
  * @defgroup Hex Hex String
  * @brief Convert between raw data and their hex representation
  * @{
@@ -41,8 +40,6 @@ inline void __attribute__((nonnull)) buf2hex (char *dst, const void *src,
 }
 
 
-/**
- * @}
- * @}
- */
+/**@}*/
+
 #endif /* HEXSTRING_H */

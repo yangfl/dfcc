@@ -18,17 +18,21 @@
 // jid
 #define DFCC_RPC_COMPILE_RESPONSE_SIGNATURE "u"
 
-#define DFCC_RPC_MAP_METHOD_NAME "map"
-// path -> (size, hash)
-#define DFCC_RPC_MAP_REQUEST_SIGNATURE "(a{s(tt)})"
-// path -> accepted
-#define DFCC_RPC_MAP_RESPONSE_SIGNATURE "a{sb}"
+#define DFCC_RPC_ASSOCIATE_METHOD_NAME "associate"
+// path -> hash
+#define DFCC_RPC_ASSOCIATE_REQUEST_SIGNATURE "a{st}"
+// accepted, reason
+#define DFCC_RPC_ASSOCIATE_RESPONSE_SIGNATURE "(bs)"
 
 #define DFCC_RPC_QUERY_METHOD_NAME "query"
 // jid nonblocking
 #define DFCC_RPC_QUERY_REQUEST_SIGNATURE "(ub)"
-// finished [finished ? (output -> (size, hash)) : (missing -> (size, hash))]
-#define DFCC_RPC_QUERY_RESPONSE_SIGNATURE "(ba{s(tt)})"
+// finished
+#define DFCC_RPC_QUERY_RESPONSE_SIGNATURE "(bv)"
+// missing -> hash
+#define DFCC_RPC_QUERY_RESPONSE_MISSING_SIGNATURE "a{st}"
+// output -> (size, hash), info -> value
+#define DFCC_RPC_QUERY_RESPONSE_FINISH_SIGNATURE "(a{st}a{sv})"
 
 #define DFCC_INFO_PATH "/info"
 #define DFCC_RPC_INFO_RESPONSE_SIGNATURE "a{sv}"

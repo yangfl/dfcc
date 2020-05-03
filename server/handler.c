@@ -4,13 +4,13 @@
 #include <glib/gstdio.h>
 
 #include <macro.h>
+#include <wrapper/soup.h>
 
 #include "../config/config.h"
 #include "../file/entry.h"
 #include "../file/remoteindex.h"
 #include "../protocol.h"
 #include "../version.h"
-#include "common.h"
 #include "context.h"
 #include "debug.h"
 #include "job.h"
@@ -73,22 +73,22 @@ static void Server_rpc_compile (
  * @param msg a SoupMessage
  * @param param a GVariant
  */
-static void Server_rpc_map (
+static void Server_rpc_associate (
     struct ServerContext *server_ctx, struct Session *session,
     SoupMessage *msg, GVariant *param) {
   GVariantIter iter;
   gchar *path;
   size_t size;
-  struct FileHash hash;
+  FileHash hash;
   for (g_variant_iter_init(&iter, param);
-       g_variant_iter_next(&iter, "{s(tt)}", &path, &size, &hash.hash);) {
+       g_variant_iter_next(&iter, "{s(tt)}", &path, &size, &hash);) {
     if unlikely (!g_path_is_absolute(path)) {
       //warn
       continue;
     }
 
     struct FileEntry *entry = g_malloc(sizeof(struct FileEntry));
-    FileEntry_init_with_hash(entry, path, &hash);
+    FileEntry_init_with_hash(entry, path, hash);
     if (!RemoteFileIndex_add(&session->file_index, entry, false)) {
       FileEntry_destroy(entry);
       g_free(entry);
@@ -140,7 +140,7 @@ struct ServerRPCTable {
 
 static const struct ServerRPCTable rpcs[] = {
   {DFCC_RPC_COMPILE_METHOD_NAME, DFCC_RPC_COMPILE_REQUEST_SIGNATURE, Server_rpc_compile, NULL},
-  {DFCC_RPC_MAP_METHOD_NAME, DFCC_RPC_MAP_REQUEST_SIGNATURE, Server_rpc_map, NULL},
+  {DFCC_RPC_ASSOCIATE_METHOD_NAME, DFCC_RPC_ASSOCIATE_REQUEST_SIGNATURE, Server_rpc_associate, NULL},
   {DFCC_RPC_QUERY_METHOD_NAME, DFCC_RPC_QUERY_REQUEST_SIGNATURE, Server_rpc_query, NULL},
 };
 
@@ -215,7 +215,7 @@ void Server_handle_upload (
   }
   soup_xmlrpc_message_set_response_e(msg, g_variant_new(
     DFCC_RPC_UPLOAD_RESPONSE_SIGNATURE,
-    msg->request_body->length, entrye->hash.hash));
+    msg->request_body->length, entrye->hash));
   return;
 }
 
@@ -226,8 +226,8 @@ void Server_handle_download (
   do_once {
     const char *s_token =
       path + server_ctx->base_path_len + strlen(DFCC_DOWNLOAD_PATH);
-    struct FileHash hash;
-    should (FileHash_init_from_string(&hash, s_token) == 0) otherwise break;
+    FileHash hash = FileHash_from_string(s_token);
+    break_if_fail(hash != 0);
     //g_hash_table_lookup(server_ctx->jobs, &hash);
   }
 

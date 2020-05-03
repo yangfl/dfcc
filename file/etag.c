@@ -3,8 +3,8 @@
 #include <glib.h>
 
 #include <macro.h>
+#include <wrapper/file.h>
 
-#include "common.h"
 #include "etag.h"
 
 

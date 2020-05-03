@@ -7,10 +7,14 @@
 
 #include <hexstring.h>
 #include <macro.h>
+#include <wrapper/file.h>
+#include <wrapper/mappedfile.h>
+#include <wrapper/soup.h>
 
+#include "../ccargs/ccargs.h"
 #include "../config/config.h"
 #include "../config/serverurl.h"
-#include "../file/common.h"
+#include "../file/hash.h"
 #include "../server/job.h"
 #include "../protocol.h"
 #include "../version.h"
@@ -18,38 +22,29 @@
 #include "remote.h"
 
 
-static GVariant *soup_xmlrpc_parse_response_e (
-    SoupMessage *msg, const char *signature, GLogLevelFlags log_level) {
-  GError *error = NULL;
-  GVariant *response = soup_xmlrpc_parse_response(
-    msg->response_body->data, msg->response_body->length,
-    signature, &error);
+struct RemoteConnection {
+  SoupSession *session;
+  SoupCookieJar *cookiejar;
+  char sessionid_cookies[sizeof(DFCC_COOKIES_SID) + 2 * sizeof(SessionID)];
 
-  should (response != NULL) otherwise {
-    g_log(DFCC_NAME, log_level,
-          error->domain == SOUP_XMLRPC_ERROR ?
-            "Error when parsing the response: %s" :
-            "Error when connecting to server: %s",
-          error->message);
-    g_error_free(error);
-  }
-
-  return response;
-}
+  JobID jid;
+  SoupURI *baseuri;
+  char *rpcurl;
+  SoupURI *uploaduri;
+  SoupURI *downloaduri;
+};
 
 
-static void Client_setup_session (
+//! @memberof RemoteConnection
+static void RemoteConnection__setup_session (
     SoupSession *session, const struct ServerURL *server_url) {
-  SoupURI *proxyurl;
-  if (server_url->proxyurl == NULL) {
-    proxyurl = NULL;
-  } else {
-    proxyurl = soup_uri_new(server_url->proxyurl);
-  }
+  SoupURI *proxyuri = server_url->proxyurl != NULL ?
+    proxyuri = soup_uri_new(server_url->proxyurl) :
+    NULL;
 
   g_object_set(
     session,
-    SOUP_SESSION_PROXY_URI, proxyurl,
+    SOUP_SESSION_PROXY_URI, proxyuri,
     //SOUP_SESSION_SSL_STRICT, !server_url->no_strict_ssl,
     SOUP_SESSION_TIMEOUT, server_url->timeout,
     //SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE
@@ -58,40 +53,120 @@ static void Client_setup_session (
     NULL
   );
 
-  if (proxyurl != NULL) {
-    soup_uri_free(proxyurl);
+  if (proxyuri != NULL) {
+    g_object_unref(proxyuri);
   }
 }
 
 
-static int Client_try_submit_job (
-    SoupSession *session, SoupCookieJar *cookiejar,
+//! @memberof RemoteConnection
+static void RemoteConnection_cleanuri (struct RemoteConnection *conn) {
+  soup_uri_free(conn->baseuri);
+  g_free(conn->rpcurl);
+  soup_uri_free(conn->uploaduri);
+  soup_uri_free(conn->downloaduri);
+}
+
+
+//! @memberof RemoteConnection
+static SoupMessage *RemoteConnection_try_submit (
+    struct RemoteConnection *conn, const struct ServerURL *server_url,
+    const char rpcmsg[], size_t len, guint *status) {
+  // prepare uri
+  soup_uri_free(conn->baseuri);
+  conn->baseuri = soup_uri_new(server_url->baseurl);
+  SoupURI *rpcuri = soup_uri_new_with_base(conn->baseuri, DFCC_RPC_PATH);
+
+  // prepare message
+  SoupMessage *msg = soup_message_new_from_uri("POST", rpcuri);
+  soup_message_set_request(msg, "text/xml", SOUP_MEMORY_TEMPORARY, rpcmsg, len);
+
+  // prepare session and cookie
+  RemoteConnection__setup_session(conn->session, server_url);
+  SoupURI *hosturi = soup_uri_copy_host(conn->baseuri);
+  soup_cookie_jar_set_cookie(conn->cookiejar, hosturi, conn->sessionid_cookies);
+  soup_uri_free(hosturi);
+
+  guint status_ = soup_session_send_message(conn->session, msg);
+  if (status_ < 100 || status_ >= 400) {
+    // fail, cleanup
+    soup_uri_free(conn->baseuri);
+    conn->baseuri = NULL;
+  } else {
+    // success, fill up uris
+    RemoteConnection_cleanuri(conn);
+    conn->rpcurl = soup_uri_to_string(rpcuri, FALSE);
+    conn->uploaduri = soup_uri_new_with_base(conn->baseuri, DFCC_UPLOAD_PATH);
+    conn->downloaduri = soup_uri_new_with_base(conn->baseuri, DFCC_DOWNLOAD_PATH);
+  }
+  soup_uri_free(rpcuri);
+
+  if likely (status != NULL) {
+    *status = status_;
+  }
+  return msg;
+}
+
+
+//! @memberof RemoteConnection
+static void RemoteConnection_destroy (struct RemoteConnection *conn) {
+  RemoteConnection_cleanuri(conn);
+
+  g_object_unref(conn->cookiejar);
+  g_object_unref(conn->session);
+}
+
+
+//! @memberof RemoteConnection
+static int RemoteConnection_init (struct RemoteConnection *conn) {
+  // setup cookie and session
+  conn->cookiejar = soup_cookie_jar_new();
+  conn->session = soup_session_new_with_options(
+    SOUP_SESSION_ADD_FEATURE, conn->cookiejar,
+    SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_SNIFFER,
+    SOUP_SESSION_USER_AGENT, DFCC_USER_AGENT,
+    NULL);
+
+  // setup logger
+  SoupLogger *logger = soup_logger_new(SOUP_LOGGER_LOG_BODY, -1);
+  soup_session_add_feature(conn->session, SOUP_SESSION_FEATURE(logger));
+  g_object_unref(logger);
+
+  // conn->sessionid_cookies = DFCC_COOKIES_SID + buf2hex(sessionid);
+  SessionID sessionid = Client__get_session_id();
+  strcpy(conn->sessionid_cookies, DFCC_COOKIES_SID);
+  buf2hex(conn->sessionid_cookies + strlen(DFCC_COOKIES_SID),
+          &sessionid, sizeof(SessionID));
+  conn->sessionid_cookies[sizeof(conn->sessionid_cookies) - 1] = '\0';
+
+  conn->baseuri = NULL;
+  conn->rpcurl = NULL;
+  conn->uploaduri = NULL;
+  conn->downloaduri = NULL;
+
+  return 0;
+}
+
+
+static int Client_try_submit (
+    struct RemoteConnection *conn,
     const struct ServerURL server_list[], char * const cc_argv[],
-    char * const cc_envp[], const char *cc_working_directory,
-    JobID *jid, SoupURI **baseuri, SoupURI **rpcuri) {
+    char * const cc_envp[], const char *cc_working_directory) {
   GError *error = NULL;
 
+  // prepare cc args
   char *xmlrpc_msg = soup_xmlrpc_build_request(
     DFCC_RPC_COMPILE_METHOD_NAME,
     g_variant_new("(^as^ass)", cc_argv, cc_envp, cc_working_directory),
     &error);
   should (error == NULL) otherwise {
-    g_log(DFCC_NAME, G_LOG_LEVEL_MESSAGE,
+    g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
           "Error when building XML RPC query: %s", error->message);
     g_error_free(error);
     return 1;
   }
-  gsize xmlrpc_msg_len = strlen(xmlrpc_msg);
+  size_t xmlrpc_msg_len = strlen(xmlrpc_msg);
 
-  SessionID sessionid = Client__get_session_id();
-  char sessionid_cookies[sizeof(DFCC_COOKIES_SID) + 2 * sizeof(SessionID)] =
-    DFCC_COOKIES_SID;
-  buf2hex(sessionid_cookies + strlen(DFCC_COOKIES_SID),
-          &sessionid, sizeof(SessionID));
-  sessionid_cookies[sizeof(sessionid_cookies) - 1] = '\0';
-
-  SoupURI *baseuri_;
-  SoupURI *rpcuri_;
   GVariant *response;
   int ret = 1;
 
@@ -99,19 +174,10 @@ static int Client_try_submit_job (
     g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
           "Trying server %s", server_list[i].baseurl);
 
-    baseuri_ = soup_uri_new(server_list[i].baseurl);
-    rpcuri_ = soup_uri_new_with_base(baseuri_, DFCC_RPC_PATH);
+    guint status;
+    SoupMessage *msg = RemoteConnection_try_submit(
+      conn, server_list + i, xmlrpc_msg, xmlrpc_msg_len, &status);
 
-    SoupMessage *msg = soup_message_new_from_uri("POST", rpcuri_);
-    soup_message_set_request(msg, "text/xml", SOUP_MEMORY_TEMPORARY,
-                             xmlrpc_msg, xmlrpc_msg_len);
-
-    Client_setup_session(session, &server_list[i]);
-    SoupURI *hosturi = soup_uri_copy_host(baseuri_);
-    soup_cookie_jar_set_cookie(cookiejar, hosturi, sessionid_cookies);
-    soup_uri_free(hosturi);
-
-    guint status = soup_session_send_message(session, msg);
     if (status < 100 || status >= 400) {
       if (status == SOUP_STATUS_SERVICE_UNAVAILABLE) {
         g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
@@ -122,7 +188,7 @@ static int Client_try_submit_job (
               server_list[i].baseurl, msg->reason_phrase);
       }
       g_object_unref(msg);
-      goto try_next;
+      continue;
     }
 
     response = soup_xmlrpc_parse_response_e(
@@ -135,83 +201,79 @@ static int Client_try_submit_job (
       ret = 0;
       break;
     }
-
-try_next:
-    soup_uri_free(rpcuri_);
-    soup_uri_free(baseuri_);
   }
 
   g_free(xmlrpc_msg);
 
   if (ret == 0) {
-    *jid = g_variant_get_uint32(response);
+    conn->jid = g_variant_get_uint32(response);
     g_variant_unref(response);
-
-    if likely (baseuri != NULL) {
-      *baseuri = baseuri_;
-    } else {
-      soup_uri_free(baseuri_);
-    }
-    if likely (rpcuri != NULL) {
-      *rpcuri = rpcuri_;
-    } else {
-      soup_uri_free(rpcuri_);
-    }
   }
 
   return ret;
 }
 
 
-static int Client_query_job (
-    SoupSession *session, const char *rpcurl, JobID jid,
-    gboolean *finished, GVariant **filelist) {
+static GVariant *Client_query_job (
+    struct RemoteConnection *conn, gboolean *finished, GVariant **filelist) {
+  GVariant *response = dfcc_session_xmlrpc(
+    conn->session, conn->rpcurl, QUERY, conn->jid, FALSE);
+  return_if_fail(response != NULL) NULL;
+  g_variant_get(response, DFCC_RPC_QUERY_RESPONSE_SIGNATURE,
+                finished, filelist);
+  return response;
+}
+
+
+static int Client_file_associate (
+    struct RemoteConnection *conn, GVariant *filelist) {
+  GVariant *response = dfcc_session_xmlrpc_variant(
+    conn->session, conn->rpcurl, ASSOCIATE, filelist);
+  return_if_fail(response != NULL) 1;
+
+  bool success;
+  const char *reason;
+  g_variant_get(response, DFCC_RPC_ASSOCIATE_RESPONSE_SIGNATURE,
+                &success, &reason);
+  should (success) otherwise {
+    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+          "Server refused to associate file: %s", reason);
+  }
+  g_variant_unref(response);
+  return !success;
+}
+
+
+static int Client_file_upload (
+    struct RemoteConnection *conn, const char *path) {
   GError *error = NULL;
-  SoupMessage *msg = soup_xmlrpc_message_new(
-    rpcurl, DFCC_RPC_QUERY_METHOD_NAME,
-    g_variant_new(DFCC_RPC_QUERY_REQUEST_SIGNATURE, jid, FALSE), &error);
-  should (msg != NULL) otherwise {
-    g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
-          "Error when building XML RPC query: %s", error->message);
+  struct MappedFile m;
+
+  should (MappedFile_init(&m, path, &error) == 0) otherwise {
+    g_log(DFCC_NAME, G_LOG_LEVEL_ERROR,
+          "Open file '%s' failed: %s", path, error->message);
     g_error_free(error);
     return 1;
   }
 
-  soup_session_send_message(session, msg);
-
-  GVariant *response = soup_xmlrpc_parse_response_e(
-    msg, DFCC_RPC_QUERY_RESPONSE_SIGNATURE, G_LOG_LEVEL_CRITICAL);
-  g_object_unref(msg);
-
-  should (response != NULL) otherwise {
-    return 1;
-  }
-
-  g_variant_get(response, DFCC_RPC_QUERY_RESPONSE_SIGNATURE,
-                finished, filelist);
-  return 0;
-}
-
-
-static int Client_upload (
-    SoupSession *session, SoupURI *uploaduri, const char *buf, size_t len) {
-  SoupMessage *msg = soup_message_new_from_uri("PUT", uploaduri);
+  SoupMessage *msg = soup_message_new_from_uri("PUT", conn->uploaduri);
   soup_message_set_request(msg, "application/octet-stream",
-                           SOUP_MEMORY_TEMPORARY, buf, len);
-  soup_session_send_message(session, msg);
-  if (msg->status_code != SOUP_STATUS_OK) {
-    g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
+                           SOUP_MEMORY_TEMPORARY, m.content, m.length);
+  soup_session_send_message(conn->session, msg);
+
+  int ret = 0;
+  should (msg->status_code == SOUP_STATUS_OK) otherwise {
+    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
           "Cannot upload, HTTP code %d", msg->status_code);
-    g_object_unref(msg);
-    return 1;
+    ret = 1;
   }
   g_object_unref(msg);
-  return 0;
+  return ret;
 }
 
 
-static SoupMessage *Client_download (
-    SoupSession *session, SoupURI *downloaduri, struct FileHash *hash) {
+static SoupMessage *Client_file_download (
+    struct RemoteConnection *conn, SoupURI *downloaduri, FileHash hash) {
   char s_hash[FileHash_STRLEN + 1];
   FileHash_to_string(hash, s_hash);
   SoupURI *fileuri = soup_uri_new_with_base(downloaduri, s_hash);
@@ -219,8 +281,8 @@ static SoupMessage *Client_download (
   SoupMessage *msg = soup_message_new_from_uri("GET", fileuri);
   soup_uri_free(fileuri);
 
-  soup_session_send_message(session, msg);
-  if (msg->status_code != SOUP_STATUS_OK) {
+  soup_session_send_message(conn->session, msg);
+  should (msg->status_code == SOUP_STATUS_OK) otherwise {
     g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
           "Cannot download %s, HTTP code %d", s_hash, msg->status_code);
     g_object_unref(msg);
@@ -231,125 +293,155 @@ static SoupMessage *Client_download (
 }
 
 
-int Client_run_remotely (struct Config *config) {
-  int ret = 0;
+static int Client_remote_missing (
+    struct RemoteConnection *conn, GVariant *filelist) {
+  return_if_g_variant_not_type(
+    filelist, DFCC_RPC_QUERY_RESPONSE_MISSING_SIGNATURE) 1;
 
-  SoupCookieJar *cookiejar = soup_cookie_jar_new();
-  SoupSession *session = soup_session_new_with_options(
-    SOUP_SESSION_ADD_FEATURE, cookiejar,
-    SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_SNIFFER,
-    SOUP_SESSION_USER_AGENT, DFCC_USER_AGENT,
-    NULL);
+  // hash list
+  GVariantBuilder builder;
+  g_variant_builder_init(&builder, G_VARIANT_TYPE(DFCC_RPC_ASSOCIATE_REQUEST_SIGNATURE));
+  bool need_associate = false;
 
-  // setup logger
-  SoupLogger *logger = soup_logger_new(SOUP_LOGGER_LOG_BODY, -1);
-  soup_session_add_feature(session, SOUP_SESSION_FEATURE(logger));
-  g_object_unref(logger);
+  GError *error = NULL;
+  GVariantIter iter;
+  char *path;
+  FileHash hash;
+  for (g_variant_iter_init(&iter, filelist);
+       g_variant_iter_loop(&iter, "{st}", &path, &hash);) {
+    if (hash == 0) {
+      need_associate = true;
 
-  SoupURI *baseuri;
-  SoupURI *rpcuri;
-  JobID jid;
-  if unlikely (Client_try_submit_job(
-      session, cookiejar, config->server_list, config->cc_argv, config->cc_envp,
-      config->cc_working_directory, &jid, &baseuri, &rpcuri) != 0) {
-    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING, "No server available");
-    g_object_unref(session);
-    return 1;
+      FileHash hash = FileHash_from_file(path, &error);
+      should (hash != 0) otherwise {
+        g_log(DFCC_NAME, G_LOG_LEVEL_ERROR,
+              "Coumpute hash of file '%s' failed: %s", path, error->message);
+        g_error_free(error);
+        goto loop_error;
+      }
+
+      g_variant_builder_add(&builder, "{st}", path, hash);
+    } else {
+      goto_if_fail(Client_file_upload(conn, path) == 0) loop_error;
+    }
+
+named_block(loop_error): {
+      g_free(path);
+      g_variant_builder_clear(&builder);
+      return 1;
+    }
   }
 
-  char *rpcurl = soup_uri_to_string(rpcuri, FALSE);
-  soup_uri_free(rpcuri);
+  if (need_associate) {
+    return_if_fail(
+      Client_file_associate(conn, g_variant_builder_end(&builder)) == 0) 1;
+  }
 
-  SoupURI *uploaduri = soup_uri_new_with_base(baseuri, DFCC_UPLOAD_PATH);
-  SoupURI *downloaduri = soup_uri_new_with_base(baseuri, DFCC_DOWNLOAD_PATH);
+  return 0;
+}
 
-  while (1) {
-    gboolean finished;
-    GVariant *filelist;
 
-    should (Client_query_job(
-        session, rpcurl, jid, &finished, &filelist) == 0) otherwise {
-      ret = 1;
-      break;
+static int Client_remote_finish (
+    struct RemoteConnection *conn, GVariant *filelist) {
+  return_if_g_variant_not_type(
+    filelist, DFCC_RPC_QUERY_RESPONSE_FINISH_SIGNATURE) 1;
+
+/*
+  GError *error = NULL;
+  GVariantIter iter;
+  gchar *path;
+  size_t size;
+  FileHash hash;
+  for (g_variant_iter_init(&iter, filelist);
+       g_variant_iter_next(&iter, "{s(tt)}", &path, &size, &hash.hash);) {
+    SoupMessage *msg = Client_file_download(conn.session, downloaduri, &hash);
+    should (msg != NULL) otherwise {
+      g_free(path);
+      goto loop_error;
     }
 
-    GError *error = NULL;
-
-    if (finished) {
-      // download file
-      GVariantIter iter;
-      gchar *path;
-      size_t size;
-      struct FileHash hash;
-      for (g_variant_iter_init(&iter, filelist);
-           g_variant_iter_next(&iter, "{s(tt)}", &path, &size, &hash.hash);) {
-        SoupMessage *msg = Client_download(session, downloaduri, &hash);
-        should (msg != NULL) otherwise {
-          g_free(path);
-          goto loop_error;
-        }
-
-        FILE *output = g_fopen_e(path, "w", &error);
-        should (output != NULL) otherwise {
-          g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL, error->message);
-          g_error_free(error);
-          g_free(path);
-          goto loop_error;
-        }
-        should (fwrite(
-            msg->response_body->data, msg->response_body->length, 1, output
-        ) != msg->response_body->length) otherwise {
-          const char *errmsg = strerror(errno);
-          g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
-                "File write failed: %s", errmsg);
-          fclose(output);
-          g_object_unref(msg);
-          g_free(path);
-          goto loop_error;
-        }
-        fclose(output);
-
-        g_object_unref(msg);
-        g_free(path);
-      }
-
-      goto break_loop;
-    } else {
-      gsize missings_len;
-      const gchar **missings = g_variant_get_strv(filelist, &missings_len);
-      for (int i = 0; i < missings_len; i++) {
-        GMappedFile *mappedfile = g_mapped_file_new(missings[i], FALSE, &error);
-        should (mappedfile != NULL) otherwise {
-          g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
-                "File mapping failed: %s", error->message);
-          g_error_free(error);
-          g_free(missings);
-          goto loop_error;
-        }
-        should (Client_upload(
-            session, uploaduri, g_mapped_file_get_contents(mappedfile),
-            g_mapped_file_get_length(mappedfile))) otherwise {
-          g_free(missings);
-          goto loop_error;
-        }
-        g_mapped_file_unref(mappedfile);
-      }
-      g_free(missings);
-      g_variant_unref(filelist);
+    FILE *output = g_fopen_e(path, "w", &error);
+    should (output != NULL) otherwise {
+      g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL, error->message);
+      g_error_free(error);
+      g_free(path);
+      goto loop_error;
     }
+    should (fwrite(
+        msg->response_body->data, msg->response_body->length, 1, output
+    ) != msg->response_body->length) otherwise {
+      const char *errmsg = strerror(errno);
+      g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
+            "File write failed: %s", errmsg);
+      fclose(output);
+      g_object_unref(msg);
+      g_free(path);
+      goto loop_error;
+    }
+    fclose(output);
 
-    continue;
+    g_object_unref(msg);
+    g_free(path);
+  }
+
+  goto break_loop;
+
 loop_error:
     ret = 1;
 break_loop:
     g_variant_unref(filelist);
     break;
+    */
+  return 0;
+}
+
+
+static int Client_run_remotely_ (
+    struct Config *config, char * const remote_argv[]) {
+  int ret = 0;
+  struct RemoteConnection conn;
+  RemoteConnection_init(&conn);
+
+  if unlikely (Client_try_submit(
+      &conn, config->server_list, remote_argv, config->cc_envp,
+      config->cc_working_directory) != 0) {
+    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING, "No server available");
+    RemoteConnection_destroy(&conn);
+    return 1;
   }
 
-  soup_uri_free(baseuri);
-  g_free(rpcurl);
-  soup_uri_free(uploaduri);
-  soup_uri_free(downloaduri);
-  g_object_unref(session);
+  while (1) {
+    gboolean finished;
+    GVariant *filelist;
+
+    GVariant *response = Client_query_job(&conn, &finished, &filelist);
+    should (response != NULL) otherwise {
+      ret = 1;
+      break;
+    }
+
+    should (finished ?
+        Client_remote_missing(&conn, filelist) :
+        Client_remote_finish(&conn, filelist) == 0) otherwise {
+      ret = 1;
+      g_variant_unref(response);
+      break;
+    }
+
+    g_variant_unref(response);
+  }
+
+  RemoteConnection_destroy(&conn);
+  return ret;
+}
+
+
+int Client_run_remotely (struct Config *config) {
+  char **remote_argv = g_strdupv(config->cc_argv);
+  int ret = 1;
+  if likely (CCargs_can_run_remotely(&remote_argv)) {
+    ret = Client_run_remotely_(config, remote_argv);
+  }
+  g_strfreev(remote_argv);
   return ret;
 }

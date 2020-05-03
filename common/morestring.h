@@ -1,8 +1,7 @@
 #ifndef MORESTRING_H
 #define MORESTRING_H
 /**
- * @addtogroup Common Common
- * @{
+ * @ingroup Common Common
  * @defgroup String String
  * @brief String related functions
  * @{
@@ -88,8 +87,6 @@ inline char *strlendup (const char *s, size_t *n) {
 }
 
 
-/**
- * @}
- * @}
- */
+/**@}*/
+
 #endif /* MORESTRING_H */

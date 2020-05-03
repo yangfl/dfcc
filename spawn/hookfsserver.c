@@ -9,8 +9,8 @@
 #include <gio/gunixsocketaddress.h>
 
 #include <simplestring.h>
+#include <wrapper/file.h>
 
-#include "../file/common.h"
 #include "../hookfs/limit.h"
 #include "../hookfs/serializer.h"
 #include "hookfsserver.h"

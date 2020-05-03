@@ -6,11 +6,11 @@
 
 #include <macro.h>
 #include <morestring.h>
+#include <wrapper/soup.h>
 
 #include "../config/config.h"
 #include "../protocol.h"
 #include "../version.h"
-#include "common.h"
 #include "context.h"
 #include "debug.h"
 #include "handler.h"
