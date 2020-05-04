@@ -16,7 +16,7 @@
  * @param[in,out] cc_argv pointer to compiler's argument vector [array zero-terminated=1]
  * @return `true` if `cc_argv` is suitable for remote compilation
  */
-bool CCargs_can_run_remotely (char **cc_argv[]);
+bool CCargs_can_run_remotely (char **cc_argv[], char **cc_envp[]);
 
 
 /**@}*/

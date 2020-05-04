@@ -1,28 +1,28 @@
 #ifndef DFCC_PROTOCOL_H
 #define DFCC_PROTOCOL_H
 
-#include "version.h"
+#include "../version.h"
 
 
 #define DFCC_PORT 0xdfc
 
 #define DFCC_USER_AGENT DFCC_NAME "/" DFCC_VERSION
 
-#define DFCC_COOKIES_SID "sid="
+#define DFCC_COOKIES_SID "SID="
 
 #define DFCC_RPC_PATH "/rpc"
 
 #define DFCC_RPC_COMPILE_METHOD_NAME "compile"
-// [argv] [envp] working_directory
-#define DFCC_RPC_COMPILE_REQUEST_SIGNATURE "(asass)"
+// [argv], [envp], working_directory, info -> value
+#define DFCC_RPC_COMPILE_REQUEST_SIGNATURE "(asassa{sv})"
 // jid
 #define DFCC_RPC_COMPILE_RESPONSE_SIGNATURE "u"
 
 #define DFCC_RPC_ASSOCIATE_METHOD_NAME "associate"
 // path -> hash
 #define DFCC_RPC_ASSOCIATE_REQUEST_SIGNATURE "a{st}"
-// accepted, reason
-#define DFCC_RPC_ASSOCIATE_RESPONSE_SIGNATURE "(bs)"
+// accepted
+#define DFCC_RPC_ASSOCIATE_RESPONSE_SIGNATURE "b"
 
 #define DFCC_RPC_QUERY_METHOD_NAME "query"
 // jid nonblocking

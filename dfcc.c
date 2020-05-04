@@ -44,8 +44,7 @@ int main (int argc, char *argv[]) {
 
   if (config.server_mode) {
     g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Server mode");
-    // a
-    if (config.foreground) {
+    if (config.debug == config.foreground) {
       should (daemon(1, 0) == 0) otherwise {
         g_printerr("Daemonization failed\n");
         return EXIT_FAILURE;

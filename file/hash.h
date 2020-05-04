@@ -1,7 +1,6 @@
 #ifndef DFCC_FILE_HASH_H
 #define DFCC_FILE_HASH_H
 
-#include <stddef.h>
 #include <string.h>
 
 #include <glib.h>
@@ -16,7 +15,7 @@
  * @class FileHash
  * @brief Contains the hash value of given data. Always be uint64_t.
  */
-typedef uint64_t FileHash;
+typedef unsigned long long FileHash;
 
 
 /**

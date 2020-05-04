@@ -6,6 +6,7 @@
  */
 
 #include "../config/config.h"
+#include "prepost.h"
 
 
 /**
@@ -14,7 +15,7 @@
  * @param config a Config
  * @return 0 if success, otherwise non-zero
  */
-int Client_run_remotely (struct Config *config);
+int Client_run_remotely (struct Config *config, struct Result * restrict result);
 
 
 /**@}*/

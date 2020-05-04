@@ -2,15 +2,17 @@
 #define DFCC_CONFIG_H
 /**
  * @defgroup Config Config
- * @{
  */
 
 #include <stdbool.h>
+
+#include <structinfo.h>
 
 #include "serverurl.h"
 
 
 /**
+ * @ingroup Config
  * @brief All information `dfcc` needed.
  */
 struct Config {
@@ -105,10 +107,14 @@ struct Config {
   struct ServerURL *server_list;
   /// Contact and test remote servers with random sequence.
   bool randomize;
+  /// Trust server-provided source files.
+  bool trust;
   ///@}
 };
 
-/**@}*/
+
+extern struct StructInfo Config__info[];
+extern const int Config__info_n;
 
 
 /**

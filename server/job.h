@@ -2,6 +2,7 @@
 #define DFCC_SERVER_JOB_H
 
 #include <stdbool.h>
+#include <threads.h>
 
 #include <glib.h>
 
@@ -64,7 +65,7 @@ void Job_free (struct Job *job);
  */
 int Job_init (
     struct Job *job, SessionID sid,
-    gchar **argv, gchar **envp, const gchar *working_directory,
+    char **argv, char **envp, const char *working_directory,
     const char *hookfs, const char *selfpath, GError **error);
 /**
  * @memberof Job
@@ -83,7 +84,7 @@ int Job_init (
  */
 inline struct Job *Job_new (
     SessionID sid,
-    gchar **argv, gchar **envp, const gchar *working_directory,
+    char **argv, char **envp, const char *working_directory,
     const char *hookfs, const char *selfpath, GError **error) {
   struct Job *job = g_malloc(sizeof(struct Job));
   should (Job_init(
@@ -108,7 +109,7 @@ struct JobTable {
   /// Lock for `table`.
   GRWLock rwlock;
   /// Lock for `npending` and `nrunning`.
-  GMutex counter_mutex;
+  mtx_t counter_mutex;
   /**
    * @brief Number of jobs to be submitted by clients.
    * @sa JobTable_try_reserve

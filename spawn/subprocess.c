@@ -153,7 +153,7 @@ int Subprocess_init (
     }
   }
 
-  g_free(envp_protected);
+  g_strfreev(envp_protected);
   if (selfpath != NULL) {
     g_free(argv_searched[0]);
     g_free(argv_searched);

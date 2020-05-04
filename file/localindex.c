@@ -21,7 +21,6 @@ struct FileEntryE *LocalFileIndex_get (
     if (FileETag_isvalid_stat(&entrye->etag, &sb)) {
       return entrye;
     } else {
-      FileHash_destroy(&entrye->hash);
       FileETag_destroy(&entrye->etag);
       absolute_path = entrye->path;
     }
@@ -29,7 +28,7 @@ struct FileEntryE *LocalFileIndex_get (
     entrye = g_malloc(sizeof(struct FileEntryE));
   }
 
-  int ret = FileEntryE_init(entrye, absolute_path, &sb, NULL, error);
+  int ret = FileEntryE_init(entrye, absolute_path, &sb, 0, error);
   should (ret == 0) otherwise {
     if (cached) {
       g_hash_table_remove(index, absolute_path);

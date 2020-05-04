@@ -9,7 +9,7 @@
 #include "../config/config.h"
 #include "../file/entry.h"
 #include "../file/remoteindex.h"
-#include "../protocol.h"
+#include "protocol.h"
 #include "../version.h"
 #include "context.h"
 #include "debug.h"
@@ -40,15 +40,18 @@ static void Server_rpc_compile (
 
   char **cc_argv;
   char **cc_envp;
-  char *cc_working_directory;
-  g_variant_get(param, "(^a&s^a&ss)", &cc_argv, &cc_envp, &cc_working_directory);
+  const char *cc_working_directory;
+  GVariantIter *settings_iter;
+  g_variant_get(param, "(^a&s^a&s&sa{sv})",
+                &cc_argv, &cc_envp, &cc_working_directory, &settings_iter);
 
   GError *error = NULL;
   struct Job *job = Job_new(
     session->sid, cc_argv, cc_envp, cc_working_directory,
     server_ctx->config->hookfs, server_ctx->config->prgpath, &error);
   should (job != NULL) otherwise {
-    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING, "Cannot create job for session %x: %s",
+    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+          "Cannot create job for session %x: %s",
           session->sid, error->message);
     soup_xmlrpc_message_set_fault(msg, 0, error->message);
     g_error_free(error);
@@ -57,10 +60,10 @@ static void Server_rpc_compile (
 
   g_free(cc_argv);
   g_free(cc_envp);
-  g_free(cc_working_directory);
+  g_variant_iter_free(settings_iter);
   g_variant_unref(param);
 
-  should (job != NULL) otherwise return;
+  return_if_fail(job != NULL);
   soup_xmlrpc_message_set_response_e(msg, g_variant_new_uint32(job->jid));
 }
 
@@ -84,16 +87,20 @@ static void Server_rpc_associate (
        g_variant_iter_next(&iter, "{s(tt)}", &path, &size, &hash);) {
     if unlikely (!g_path_is_absolute(path)) {
       //warn
+      g_free(path);
       continue;
     }
 
-    struct FileEntry *entry = g_malloc(sizeof(struct FileEntry));
+    struct FileEntry *entry = g_new(struct FileEntry, 1);
     FileEntry_init_with_hash(entry, path, hash);
-    if (!RemoteFileIndex_add(&session->file_index, entry, false)) {
+    should (RemoteFileIndex_add(&session->file_index, entry, false)) otherwise {
       FileEntry_destroy(entry);
       g_free(entry);
+      g_free(path);
     }
   }
+
+  g_variant_unref(param);
 }
 
 
@@ -125,6 +132,8 @@ static void Server_rpc_query (
   } else {
     //soup_server_pause_message(server_ctx->server, msg);
   }
+
+  g_variant_unref(param);
 }
 
 

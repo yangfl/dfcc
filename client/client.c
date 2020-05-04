@@ -1,14 +1,23 @@
 #include <macro.h>
 
+#include "prepost.h"
 #include "local.h"
 #include "remote.h"
 #include "client.h"
 
 
 int Client_start (struct Config *config) {
-  if (Client_run_remotely(config) == 0) {
-    return 0;
+  return_if(Client_pre(config) == 0) 0;
+
+  struct Result result = {0};
+  int ret;
+
+  if (Client_run_remotely(config, &result) == 0) {
+    ret = 0;
+  } else {
+    ret = Client_run_locally(config, &result);
   }
 
-  return Client_run_locally(config);
+  Client_post(config, &result);
+  return ret;
 }

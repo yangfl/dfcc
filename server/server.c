@@ -9,7 +9,7 @@
 #include <wrapper/soup.h>
 
 #include "../config/config.h"
-#include "../protocol.h"
+#include "protocol.h"
 #include "../version.h"
 #include "context.h"
 #include "debug.h"
@@ -161,13 +161,12 @@ int Server_start (struct Config *config) {
 
       soup_server_listen_all(server, config->port, SOUP_SERVER_LISTEN_HTTPS,
                              &error);
-      should (error == NULL) otherwise break;
     } else {
       server = soup_server_new(SOUP_SERVER_SERVER_HEADER, DFCC_USER_AGENT,
                                NULL);
       soup_server_listen_all(server, config->port, 0, &error);
-      should (error == NULL) otherwise break;
     }
+    break_if_fail(error == NULL);
   }
 
   if (error) {
@@ -235,10 +234,12 @@ int Server_start (struct Config *config) {
   loop = g_main_loop_new(NULL, TRUE);
   signal(SIGINT, Server_quit);
   g_main_loop_run(loop);
-  g_main_loop_unref(loop);
 
+  g_main_loop_unref(loop);
   server_housekeeping_ctx->stop = true;
   ServerContext_destroy(&server_ctx);
+  soup_server_disconnect(server);
+  g_object_unref(server);
   return 0;
 }
 

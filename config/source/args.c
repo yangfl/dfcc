@@ -68,8 +68,10 @@ int Config_parse_args (struct Config *config, char *args[]) {
   GError *error = NULL;
   should (g_option_context_parse_strv(context, &args, &error)) otherwise {
     g_printerr("Option parsing failed: %s\n", error->message);
+    g_option_context_free(context);
     return 1;
   }
+  g_option_context_free(context);
 
   if (config->server_mode) {
     if (config->hookfs != NULL) {

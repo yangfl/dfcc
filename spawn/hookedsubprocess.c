@@ -86,7 +86,6 @@ void HookedSubprocess_destroy (struct HookedSubprocess *p) {
   g_string_free(p->stdout_buf, FALSE);
   switch (p->pending_type) {
     case HOOKED_PENDING_PATH_HASH:
-      FileHash_destroy(p->pending_hash);
       break;
     case HOOKED_PENDING_HASH_FILE:
       g_free(p->pending_path);

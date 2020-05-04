@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <string.h>
 
 #include <glib.h>
@@ -11,6 +12,12 @@
 #include "source/mux.h"
 #include "serverurl.h"
 #include "config.h"
+
+
+struct StructInfo Config__info[] = {
+  {"trust", G_TYPE_BOOLEAN, offsetof(struct Config, trust)},
+};
+const int Config__info_n = G_N_ELEMENTS(Config__info);
 
 
 /**

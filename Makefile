@@ -18,7 +18,7 @@ LDFLAGS +=
 LIBS := glib-2.0 gio-2.0 gio-unix-2.0 libsoup-2.4
 LIBS_CPPFLAGS := -Ivendor/whereami/src $(shell pkg-config --cflags-only-I $(LIBS))
 LIBS_CFLAGS := $(shell pkg-config --cflags-only-other $(LIBS))
-LIBS_LDFLAGS := -lxxhash $(shell pkg-config --libs $(LIBS))
+LIBS_LDFLAGS := -lxxhash -lpthread $(shell pkg-config --libs $(LIBS))
 
 CPPFLAGS += $(LIBS_CPPFLAGS)
 CFLAGS += $(LIBS_CFLAGS)
@@ -26,17 +26,17 @@ LDFLAGS += $(LIBS_LDFLAGS)
 
 SOURCES := \
 	vendor/whereami/src/whereami.c \
-	common/broadcast.c common/hexstring.c common/morestring.c \
-	common/wrapper/file.c common/wrapper/mappedfile.c common/wrapper/soup.c \
+	common/broadcast.c common/hexstring.c common/morestring.c common/structinfo.c \
+		common/wrapper/file.c common/wrapper/mappedfile.c common/wrapper/soup.c \
 	config/config.c config/serverurl.c \
-	config/source/args.c config/source/default.c config/source/conffile.c \
-		config/source/mux.c \
+		config/source/args.c config/source/default.c config/source/conffile.c \
+			config/source/mux.c \
 	file/cache.c file/entry.c file/etag.c file/hash.c \
-	file/localindex.c file/remoteindex.c \
+		file/localindex.c file/remoteindex.c \
 	spawn/hookfsserver.c spawn/hookedsubprocess.c spawn/subprocess.c \
 	ccargs/ccargs.c \
 	client/client.c client/local.c \
-		client/remote.c client/sessionid.c \
+		client/remote.c client/prepost.c client/sessionid.c \
 	server/server.c server/context.c server/debug.c \
 		server/handler.c server/job.c server/session.c \
 	dfcc.c

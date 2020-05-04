@@ -3,9 +3,9 @@
 
 #include <glib.h>
 
-#include "../../protocol.h"
 #include "../../version.h"
 #include "../config.h"
+#include "../server/protocol.h"
 #include "default.h"
 
 
@@ -93,7 +93,7 @@ static int Config_fill_default_client (struct Config *config) {
 
   // temp
   if (config->server_list == NULL) {
-    config->server_list = g_malloc(2 * sizeof(struct ServerURL));
+    config->server_list = g_new0(struct ServerURL, 2);
     config->server_list[0].baseurl = g_strdup("http://127.0.0.1:3580/");
     config->server_list[1].baseurl = NULL;
     return 0;
