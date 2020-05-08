@@ -7,20 +7,20 @@
 #include "common/hexstring.h"
 #include "common/macro.h"
 #include "common/wrapper/file.h"
-#include "./version.h"
-#include "file/entry.h"
+#include "log.h"
+#include "entry.h"
 #include "cache.h"
 
 
 /**
  * @ingroup File
- * @extends FileEntryE
+ * @extends FileEntry
  * @brief Contains the information about a single cache file.
  *
  * @sa Cache
  */
 struct CacheEntry {
-  struct FileEntryE;
+  struct FileEntry;
   /// Reference counter.
   gatomicrefcount arc;
   /// Whether the cache file is outdated.
@@ -32,10 +32,10 @@ struct CacheEntry {
  * @memberof CacheEntry
  * @brief Frees associated resources of a CacheEntry.
  *
- * @param entrye a CacheEntry
+ * @param entry a CacheEntry
  */
-static void CacheEntry_destroy (struct CacheEntry *entrye) {
-  FileEntryE_destroy((struct FileEntryE *) entrye);
+static void CacheEntry_destroy (struct CacheEntry *entry) {
+  FileEntry_destroy((struct FileEntry *) entry);
 }
 
 
@@ -43,22 +43,22 @@ static void CacheEntry_destroy (struct CacheEntry *entrye) {
  * @memberof CacheEntry
  * @brief Initializes a CacheEntry with path, stat buffer and hash of a file.
  *
- * @param entrye a CacheEntry
+ * @param entry a CacheEntry
  * @param path path to a file
  * @param sb GStatBuf of a file
  * @param hash hash of a file
  * @return 0 if success, otherwize nonzero
  */
 static int CacheEntry_init (
-    struct CacheEntry *entrye, char *path,
+    struct CacheEntry *entry, char *path,
     GStatBuf *sb, FileHash hash) {
-  g_atomic_ref_count_init(&entrye->arc);
-  entrye->invalid = false;
-  return FileEntryE_init_full((struct FileEntryE *) entrye, path, sb, hash);
+  g_atomic_ref_count_init(&entry->arc);
+  entry->invalid = false;
+  return FileEntry_init_full((struct FileEntry *) entry, path, sb, hash);
 }
 
 
-extern inline bool FileEntry_is_cache (const struct FileEntry *entry);
+extern inline bool FileTag_is_cache (const struct FileTag *tag);
 
 
 static int Cache__construct_subdir (
@@ -137,35 +137,35 @@ static inline char *Cache_construct_abspath (
 
 
 bool Cache_verify (
-    struct Cache *cache, struct CacheEntry *entrye, GError **error) {
+    struct Cache *cache, struct CacheEntry *entry, GError **error) {
   bool entry_valid = false;
 
-  if (!entrye->invalid) {
-    bool entry_is_cache = FileEntry_is_cache((struct FileEntry *) entrye);
+  if (!entry->invalid) {
+    bool entry_is_cache = FileTag_is_cache((struct FileTag *) entry);
 
     char *path;
     // convert to absolute path if necessary
     if (entry_is_cache) {
-      path = Cache_realpath(cache, entrye->path);
+      path = Cache_realpath(cache, entry->path);
     } else {
-      path = entrye->path;
+      path = entry->path;
     }
 
     do_once {
       GStatBuf sb;
       should (g_stat_e(path, &sb, error) == 0) otherwise break;
-      entry_valid = FileETag_isvalid_stat(&entrye->etag, &sb);
+      entry_valid = FileStat_isvalid_stat(&entry->stat_, &sb);
 
       if (!entry_valid) {
         // invalid stamp, try to rescue
         // size must match
-        if (sb.st_size == entrye->etag.size) {
+        if (sb.st_size == entry->stat_.size) {
           FileHash current_hash = FileHash_from_file(path, error);
           break_if_fail(current_hash != 0);
           // hash must match
-          if (current_hash == entrye->hash) {
+          if (current_hash == entry->hash) {
             // so we can rescue
-            entrye->etag.mtime = sb.st_mtime;
+            entry->stat_.mtime = sb.st_mtime;
             entry_valid = true;
           }
         }
@@ -175,14 +175,14 @@ bool Cache_verify (
     if (!entry_valid) {
       // invalid entry, delete
       g_rw_lock_writer_lock(&cache->rwlock);
-      g_hash_table_remove(cache->index, &entrye->hash);
+      g_hash_table_remove(cache->index, &entry->hash);
       g_rw_lock_writer_unlock(&cache->rwlock);
 
       if (entry_is_cache) {
         // invalid cache file, delete
         g_remove(path);
       }
-      entrye->invalid = true;
+      entry->invalid = true;
     }
 
     if (entry_is_cache) {
@@ -190,30 +190,30 @@ bool Cache_verify (
     }
   }
 
-  if (g_atomic_ref_count_dec(&entrye->arc) && entrye->invalid) {
-    CacheEntry_destroy(entrye);
-    g_free(entrye);
+  if (g_atomic_ref_count_dec(&entry->arc) && entry->invalid) {
+    CacheEntry_destroy(entry);
+    g_free(entry);
   }
 
   return entry_valid;
 }
 
 
-static struct FileEntryE *Cache_index (
+static struct FileEntry *Cache_index (
     struct Cache *cache, char *path, GStatBuf *sb, FileHash hash) {
-  struct CacheEntry *entrye = g_malloc(sizeof(struct CacheEntry));
-  CacheEntry_init(entrye, path, sb, hash);
+  struct CacheEntry *entry = g_malloc(sizeof(struct CacheEntry));
+  CacheEntry_init(entry, path, sb, hash);
 
   GRWLockWriterLocker *locker =
     g_rw_lock_writer_locker_new(&cache->rwlock);
-  g_hash_table_insert(cache->index, &entrye->hash, entrye);
+  g_hash_table_insert(cache->index, &entry->hash, entry);
   g_rw_lock_writer_locker_free(locker);
 
-  return (struct FileEntryE *) entrye;
+  return (struct FileEntry *) entry;
 }
 
 
-static struct FileEntryE *Cache_index_cache (
+static struct FileEntry *Cache_index_cache (
     struct Cache *cache, FileHash hash, GError **error) {
   char cache_relpath[Cache_RELPATH_LENGTH + 1];
   Cache__construct_relpath(hash, cache_relpath);
@@ -250,24 +250,24 @@ static struct FileEntryE *Cache_index_cache (
 }
 
 
-struct FileEntryE *Cache_try_get (
+struct FileEntry *Cache_try_get (
     struct Cache *cache, FileHash hash, GError **error) {
   // find an existing one
   GRWLockReaderLocker *locker =
     g_rw_lock_reader_locker_new(&cache->rwlock);
-  struct CacheEntry *entrye = g_hash_table_lookup(cache->index, &hash);
-  if (entrye != NULL) {
-    g_atomic_ref_count_inc(&entrye->arc);
+  struct CacheEntry *entry = g_hash_table_lookup(cache->index, &hash);
+  if (entry != NULL) {
+    g_atomic_ref_count_inc(&entry->arc);
   }
   g_rw_lock_reader_locker_free(locker);
 
-  if (entrye != NULL) {
+  if (entry != NULL) {
     GError *error_ = NULL;
-    if (Cache_verify(cache, entrye, &error_)) {
-      return (struct FileEntryE *) entrye;
+    if (Cache_verify(cache, entry, &error_)) {
+      return (struct FileEntry *) entry;
     }
     if (error_ != NULL) {
-      g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+      g_log(DFCC_FILE_NAME, G_LOG_LEVEL_WARNING,
             "Error when verify cache entry: %s", error_->message);
       g_error_free(error_);
     }
@@ -277,19 +277,19 @@ struct FileEntryE *Cache_try_get (
 }
 
 
-struct FileEntryE *Cache_index_buf (
+struct FileEntry *Cache_index_buf (
     struct Cache *cache, const char *buf, size_t size, GError **error) {
   FileHash hash = FileHash_from_buf(buf, size);
   GError *error_ = NULL;
-  struct FileEntryE *entrye = Cache_try_get(cache, hash, error);
+  struct FileEntry *entry = Cache_try_get(cache, hash, error);
   should (error_ == NULL) otherwise {
     if (error != NULL) {
       *error = error_;
     }
     return NULL;
   }
-  if (entrye != NULL) {
-    return entrye;
+  if (entry != NULL) {
+    return entry;
   }
 
   // write to cache dir
@@ -326,10 +326,10 @@ struct FileEntryE *Cache_index_buf (
 }
 
 
-struct FileEntryE *Cache_index_path (
+struct FileEntry *Cache_index_path (
     struct Cache *cache, const char *path, bool *added, GError **error) {
   bool added_ = false;
-  struct FileEntryE *entrye = NULL;
+  struct FileEntry *entry = NULL;
 
   char *cache_abspath = NULL;
   if (!g_path_is_absolute(path)) {
@@ -349,7 +349,7 @@ struct FileEntryE *Cache_index_path (
 
     // does the hash exist in our db?
     GError *error_ = NULL;
-    struct FileEntryE *existing_entry = Cache_try_get(cache, hash, &error_);
+    struct FileEntry *existing_entry = Cache_try_get(cache, hash, &error_);
     should (error_ == NULL) otherwise {
       if (error != NULL) {
         *error = error_;
@@ -357,7 +357,7 @@ struct FileEntryE *Cache_index_path (
       break;
     }
     if (existing_entry != NULL &&
-        !FileEntry_is_cache((struct FileEntry *) existing_entry)) {
+        !FileTag_is_cache((struct FileTag *) existing_entry)) {
       // we already knew that file
       break;
     }
@@ -365,10 +365,10 @@ struct FileEntryE *Cache_index_path (
     // add to db
     GStatBuf sb;
     should (g_stat_e(path, &sb, error) == 0) otherwise break;
-    entrye = Cache_index(
+    entry = Cache_index(
       cache, cache_abspath == NULL ? g_strdup(path) : cache_abspath,
       &sb, hash);
-    should (entrye != NULL) otherwise break;
+    should (entry != NULL) otherwise break;
     added_ = true;
   }
 
@@ -378,19 +378,20 @@ struct FileEntryE *Cache_index_path (
   if (added != NULL) {
     *added = added_;
   }
-  return entrye;
+  return entry;
 }
 
 
 void Cache_destroy (struct Cache *cache) {
+  g_rw_lock_writer_lock(&cache->rwlock);
   g_hash_table_destroy(cache->index);
+  g_rw_lock_writer_unlock(&cache->rwlock);
   g_rw_lock_clear(&cache->rwlock);
   Broadcast_destroy(&cache->sta);
-  g_free(cache->cache_dir);
 }
 
 
-int Cache_init (struct Cache *cache, char *cache_dir, bool no_verify_cache) {
+int Cache_init (struct Cache *cache, const char *cache_dir, bool no_verify_cache) {
   int ret = Broadcast_init(
     &cache->sta, FileHash_hash, FileHash_equal, NULL, NULL);
     // (DupFunc) FileHash_new_copy, FileHash_free);

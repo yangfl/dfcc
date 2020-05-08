@@ -1,9 +1,12 @@
 #ifndef DFCC_SPAWN_HOOKFS_SERVER_H
 #define DFCC_SPAWN_HOOKFS_SERVER_H
 
+#include <stdatomic.h>
 #include <stdbool.h>
 
 #include <gio/gio.h>
+
+#include "spawn/_hookedprocessgroupid.h"
 
 
 //! @memberof HookFsServer
@@ -13,17 +16,20 @@
 
 
 //! @memberof HookFsServer
-typedef unsigned long long HookFsID;
-//! @memberof HookFsServer
 typedef char *(*HookFsServerFileTranslator) (
-  HookFsID, const char *, bool, int);
+  struct HookedProcess *p, const char *path, bool dierction_read, int mode);
+typedef struct HookedProcess *(*HookFsServerProcessResolver) (
+  void *self, HookedProcessGroupID hgid, GPid pid);
 
 
 //! @ingroup Spawn
 struct HookFsServer {
-  GSocketService *service;
   HookFsServerFileTranslator translator;
-  char *path;
+  HookFsServerProcessResolver resolver;
+  GSocketService *service;
+  char *socket_path;
+  /// User data.
+  void *userdata;
 };
 
 
@@ -31,8 +37,9 @@ struct HookFsServer {
 void HookFsServer_destroy (struct HookFsServer *server);
 //! @memberof HookFsServer
 int HookFsServer_init (
-    struct HookFsServer *server, const char *path,
-    HookFsServerFileTranslator translator, GError **error);
+  struct HookFsServer *server, const char *socket_path,
+  HookFsServerFileTranslator translator, HookFsServerProcessResolver resolver,
+  GError **error);
 
 
 #endif /* DFCC_SPAWN_HOOKFS_SERVER_H */

@@ -12,7 +12,7 @@ struct FileServer {
   GHashTable *table;
   struct Cache *cache;
 
-  void (*onmissing) (struct HookedSubprocess *, void *, char *);
+  void (*onmissing) (struct HookedProcess *, void *, char *);
   void *onmissing_userdata;
 };
 

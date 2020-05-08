@@ -11,7 +11,7 @@ struct LocalFileIndex {
 
 
 //! @memberof LocalFileIndex
-struct FileEntryE *LocalFileIndex_get (
+struct FileEntry *LocalFileIndex_get (
     GHashTable *index, const char* path, GError **error);
 /**
  * @memberof LocalFileIndex

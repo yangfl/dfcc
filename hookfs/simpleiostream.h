@@ -7,6 +7,14 @@
 
 
 //! @ingroup Hookfs
+struct SimpleOStream {
+  char *data;
+  unsigned int len;
+  unsigned int i;
+};
+
+
+//! @ingroup Hookfs
 struct SimpleIStream {
   char *data;
   FILE *f;

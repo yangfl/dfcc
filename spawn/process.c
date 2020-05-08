@@ -4,8 +4,9 @@
 #include <glib.h>
 
 #include "common/macro.h"
-#include "./version.h"
-#include "subprocess.h"
+#include "common/wrapper/threads.h"
+#include "log.h"
+#include "process.h"
 
 
 GQuark DFCC_SPAWN_ERROR;
@@ -16,41 +17,71 @@ static void __attribute__ ((constructor)) DFCC_SPAWN_ERROR_init (void) {
 }
 
 
-static void Subprocess_child_watch_cb (GPid pid, gint status, gpointer user_data) {
-  struct Subprocess *p = (struct Subprocess *) user_data;
+static void Process_child_watch_cb (GPid pid, gint status, gpointer user_data) {
+  struct Process *p = (struct Process *) user_data;
+
+  GError *error = NULL;
+  should (mtx_lock_e(&p->mtx, &error) == thrd_success) otherwise {
+    g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_ERROR,
+          "%s: %s", __func__, error->message);
+    g_error_free(error);
+  }
 
   p->stopped = true;
 
   if (g_spawn_check_exit_status(status, &p->error)) {
-    g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+    g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
           "Child %" G_PID_FORMAT " exited normally", pid);
   } else {
-    g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+    g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
           "Child %" G_PID_FORMAT " exited abnormally: %s",
           pid, p->error->message);
   }
 
   if (p->onexit != NULL) {
-    p->onexit(p, p->onexit_userdata);
+    p->onexit(p);
+  }
+
+  if likely (error == NULL) {
+    should (mtx_unlock_e(&p->mtx, &error) == thrd_success) otherwise {
+      g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_ERROR,
+            "%s: %s", __func__, error->message);
+      g_error_free(error);
+    }
   }
 }
 
 
-void Subprocess_destroy (struct Subprocess *p) {
+void Process_destroy (struct Process *p) {
   if (!p->stopped) {
-    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
-          "Destroy Subprocess structure while child %" G_PID_FORMAT
+    g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING,
+          "Destroy Process structure while child %" G_PID_FORMAT
           " has not stopped", p->pid);
   }
   g_spawn_close_pid(p->pid);
+
+  GError *error = NULL;
+  should (mtx_lock_e(&p->mtx, &error) == thrd_success) otherwise {
+    g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_ERROR,
+          "%s: %s", __func__, error->message);
+    g_error_free(error);
+  }
   if (p->error != NULL) {
     g_error_free(p->error);
   }
+  if likely (error == NULL) {
+    should (mtx_unlock_e(&p->mtx, &error) == thrd_success) otherwise {
+      g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_ERROR,
+            "%s: %s", __func__, error->message);
+      g_error_free(error);
+    }
+  }
+  mtx_destroy(&p->mtx);
 }
 
 
 /**
- * @memberof Subprocess
+ * @memberof Process
  * @private
  * @brief Search for a executable in the `PATH` environment variable, with
  *        `selfpath` avoided.
@@ -60,7 +91,7 @@ void Subprocess_destroy (struct Subprocess *p) {
  * @param[out] error a return location for a GError [optional]
  * @return the full path to the executable, or NULL
  */
-static char *Subprocess__search_executable (
+static char *Process__search_executable (
     const char *file, const char *selfpath, GError **error) {
   bool would_loop = false;
   char *ret = NULL;
@@ -109,16 +140,25 @@ static char *Subprocess__search_executable (
 }
 
 
-int Subprocess_init (
-    struct Subprocess *p, gchar **argv, gchar **envp, const char *selfpath,
-    SubprocessExitCallback onexit, void *onexit_userdata, GError **error) {
+int Process_init (
+    struct Process *p, gchar **argv, gchar **envp, const char *selfpath,
+    ProcessExitCallback onexit, void *userdata, GError **error) {
+  if (p != NULL) {
+    return_if_fail(
+      mtx_init_e(&p->mtx, mtx_plain, error) == thrd_success
+    ) 255;
+  }
+
   bool free_argv = false;
   if (selfpath != NULL && strchr(argv[0], '/') == NULL) {
     free_argv = true;
     argv = g_memdup(argv, (g_strv_length(argv) + 1) * sizeof(gchar *));
-    argv[0] = Subprocess__search_executable(argv[0], selfpath, error);
+    argv[0] = Process__search_executable(argv[0], selfpath, error);
     should (argv[0] != NULL) otherwise {
       g_free(argv);
+      if (p != NULL) {
+        mtx_destroy(&p->mtx);
+      }
       return 128;
     }
   }
@@ -150,8 +190,9 @@ int Subprocess_init (
           NULL, argv, envp_protected,
           search_path | G_SPAWN_DO_NOT_REAP_CHILD |
             G_SPAWN_LEAVE_DESCRIPTORS_OPEN,
-          NULL, NULL, &p->pid, &p->stdin, &p->stdout, &p->stderr, error)
+          NULL, NULL, &p->pid, &p->stdin, NULL, NULL, error) // temp
       ) otherwise {
+        mtx_destroy(&p->mtx);
         exit_status = 255;
         break;
       }
@@ -159,9 +200,7 @@ int Subprocess_init (
       p->stopped = false;
       p->error = NULL;
       p->onexit = onexit;
-      p->onexit_userdata = onexit_userdata;
-
-      g_child_watch_add(p->pid, Subprocess_child_watch_cb, p);
+      p->userdata = userdata;
     }
   }
 
@@ -169,6 +208,10 @@ int Subprocess_init (
   if (free_argv) {
     g_free(argv[0]);
     g_free(argv);
+  }
+
+  if (p != NULL) {
+    g_child_watch_add(p->pid, Process_child_watch_cb, p);
   }
 
   return exit_status;

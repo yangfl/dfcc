@@ -17,12 +17,12 @@ struct RemoteFileIndex {
 
 //! @memberof RemoteFileIndex
 bool RemoteFileIndex_add (
-    struct RemoteFileIndex *index, struct FileEntry *entry, bool force);
+    struct RemoteFileIndex *index, struct FileTag *tag, bool force);
 //! @memberof RemoteFileIndex
-struct FileEntry *RemoteFileIndex_get (
+struct FileTag *RemoteFileIndex_get (
     struct RemoteFileIndex *index, const char* path);
 //! @memberof RemoteFileIndex
-struct FileEntry *RemoteFileIndex_try_get (
+struct FileTag *RemoteFileIndex_try_get (
     struct RemoteFileIndex *index, const char* path);
 /**
  * @memberof RemoteFileIndex

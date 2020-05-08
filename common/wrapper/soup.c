@@ -9,26 +9,26 @@
 
 
 void soup_xmlrpc_message_log_and_set_fault (
-    SoupMessage *msg, GLogLevelFlags log_level,
-    int fault_code, const char *format, ...) {
+    SoupMessage *msg, int fault_code, const char *log_domain,
+    GLogLevelFlags log_level, const char *format, ...) {
   va_list args;
   va_start(args, format);
   gchar *error_msg = g_strdup_vprintf(format, args);
   va_end(args);
 
-  g_log(DFCC_NAME, log_level, error_msg);
+  g_log(log_domain, log_level, error_msg);
   soup_xmlrpc_message_set_fault(msg, fault_code, error_msg);
   g_free(error_msg);
 }
 
 
 gboolean soup_xmlrpc_message_set_response_e (
-    SoupMessage *msg, GVariant *value) {
+    SoupMessage *msg, GVariant *value, const char *log_domain) {
   GError *error = NULL;
   gboolean ret = soup_xmlrpc_message_set_response(msg, value, &error);
   should (ret) otherwise {
     soup_xmlrpc_message_log_and_set_fault(
-      msg, G_LOG_LEVEL_CRITICAL, 1,
+      msg, 1, log_domain, G_LOG_LEVEL_CRITICAL,
       "Error when responsing XML RPC request: %s", error->message);
     g_error_free(error);
   }
@@ -37,14 +37,15 @@ gboolean soup_xmlrpc_message_set_response_e (
 
 
 GVariant *soup_xmlrpc_parse_response_e (
-    SoupMessage *msg, const char *signature, GLogLevelFlags log_level) {
+    SoupMessage *msg, const char *signature,
+    const char *log_domain, GLogLevelFlags log_level) {
   GError *error = NULL;
   GVariant *response = soup_xmlrpc_parse_response(
     msg->response_body->data, msg->response_body->length,
     signature, &error);
 
   should (response != NULL) otherwise {
-    g_log(DFCC_NAME, log_level,
+    g_log(log_domain, log_level,
           error->domain == SOUP_XMLRPC_ERROR ?
             "Error when parsing the response: %s" :
             "Error when connecting to server: %s",
@@ -58,11 +59,12 @@ GVariant *soup_xmlrpc_parse_response_e (
 
 GVariant *soup_session_xmlrpc (
     SoupSession *session, const char *uri, const char *method_name,
-    GVariant *params, const char *signature, unsigned int *status) {
+    GVariant *params, const char *signature, const char *log_domain,
+    unsigned int *status) {
   GError *error = NULL;
   SoupMessage *msg = soup_xmlrpc_message_new(uri, method_name, params, &error);
   should (msg != NULL) otherwise {
-    g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
+    g_log(log_domain, G_LOG_LEVEL_CRITICAL,
           "Error when building XML RPC query: %s", error->message);
     g_error_free(error);
     g_object_unref(msg);
@@ -74,14 +76,14 @@ GVariant *soup_session_xmlrpc (
     *status = status_;
   }
   should (SOUP_STATUS_IS_SUCCESSFUL(status_)) otherwise {
-    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+    g_log(log_domain, G_LOG_LEVEL_WARNING,
           "Failed to perform RPC request: %s", msg->reason_phrase);
     g_object_unref(msg);
     return NULL;
   }
 
   GVariant *response = soup_xmlrpc_parse_response_e(
-    msg, signature, G_LOG_LEVEL_WARNING);
+    msg, signature, log_domain, G_LOG_LEVEL_WARNING);
   g_object_unref(msg);
   return response;
 }

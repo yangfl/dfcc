@@ -37,10 +37,6 @@ int main (int argc, char *argv[]) {
     return EXIT_SUCCESS;
   }
 
-  if (config.debug) {
-    g_setenv("G_MESSAGES_DEBUG", "all", TRUE);
-  }
-
   if (config.server_mode) {
     g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Server mode");
     if (config.debug == config.foreground) {

@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
@@ -219,14 +220,14 @@ HOOK_PATH(int, access, (pathname, mode), pathname,
 WRAP(int, stat) (const char *pathname, struct stat *statbuf)
 HOOK_PATH(int, stat, (pathname, statbuf), pathname,
   serialize_string(&serdes, pathname);
-  serialize_printf(&serdes, "%p", statbuf);
+  serialize_printf(&serdes, "%p", (void *) statbuf);
 )
 
 
 WRAP(int, lstat) (const char *pathname, struct stat *statbuf)
 HOOK_PATH(int, lstat, (pathname, statbuf), pathname,
   serialize_string(&serdes, pathname);
-  serialize_printf(&serdes, "%p", statbuf);
+  serialize_printf(&serdes, "%p", (void *) statbuf);
 )
 
 
@@ -276,7 +277,7 @@ WRAP(FILE *, freopen) (const char *filename, const char *mode, FILE *stream)
 HOOK_PATH(FILE *, freopen, (filename, mode, stream), filename,
   serialize_string(&serdes, filename);
   serialize_string(&serdes, mode);
-  serialize_printf(&serdes, "%p", stream);
+  serialize_printf(&serdes, "%p", (void *) stream);
 )
 
 
@@ -284,7 +285,7 @@ WRAP(FILE *, freopen64) (const char *filename, const char *mode, FILE *stream)
 HOOK_PATH(FILE *, freopen64, (filename, mode, stream), filename,
   serialize_string(&serdes, filename);
   serialize_string(&serdes, mode);
-  serialize_printf(&serdes, "%p", stream);
+  serialize_printf(&serdes, "%p", (void *) stream);
 )
 
 
@@ -346,9 +347,9 @@ static void __attribute__ ((constructor)) hookfs_init () {
     exit(255);
   }
 
-  char *hookfs_id = getenv("HOOKFS_ID");
-  should (hookfs_id != NULL) otherwise {
-    fputs("No HOOKFS_ID specified!\n", stderr);
+  char *hookfs_ns = getenv("HOOKFS_NS");
+  should (hookfs_ns != NULL) otherwise {
+    fputs("No HOOKFS_NS specified!\n", stderr);
     exit(255);
   }
 
@@ -363,10 +364,14 @@ static void __attribute__ ((constructor)) hookfs_init () {
 
   struct Serializer serdes = serdes_;
   GString buf;
+  g_string_destroy(&buf, false);
+
   g_string_init(&buf, NULL);
-  serdes.istream = &buf;
+  serdes.ostream = &buf;
   serialize_literal(&serdes, "-id");
-  serialize_string(&serdes, hookfs_id);
+  serialize_string(&serdes, hookfs_ns);
+  uint32_t pid = getpid();
+  serialize_literal(&serdes, &pid);
   serialize_end(&serdes);
 
   should (Socket_send(&sock, buf.data, buf.len) >= 0) otherwise {

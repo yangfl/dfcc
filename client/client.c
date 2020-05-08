@@ -1,9 +1,9 @@
 #include "common/macro.h"
 #include "ccargs/ccargs.h"
-#include "./version.h"
-#include "client/prepost.h"
-#include "client/local.h"
-#include "client/remote.h"
+#include "log.h"
+#include "prepost.h"
+#include "local.h"
+#include "remote.h"
 #include "client.h"
 
 
@@ -19,7 +19,7 @@ int Client_start (struct Config *config) {
     if (Client_run_remotely(config, &result, remote_argv, remote_envp) == 0) {
       ret = 0;
     } else {
-      g_log(DFCC_NAME, G_LOG_LEVEL_WARNING, "Remote compile failed, fallback to local");
+      g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING, "Remote compile failed, fallback to local");
     }
   }
   g_strfreev(remote_argv);

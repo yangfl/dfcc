@@ -6,6 +6,7 @@
  */
 
 #include <stdbool.h>
+#include <threads.h>
 
 #include <glib.h>
 
@@ -14,47 +15,52 @@
 extern GQuark DFCC_SPAWN_ERROR;
 
 
-struct Subprocess;
-//! @memberof Subprocess
-typedef void (*SubprocessExitCallback) (struct Subprocess *, void *);
+struct Process;
+//! @memberof Process
+typedef void (*ProcessExitCallback) (struct Process *);
 
 
 /**
  * @ingroup Spawn
  * @brief Contains the information of a spawned process.
  */
-struct Subprocess {
+struct Process {
+  //! PID of the process.
   GPid pid;
 
-  //! File descriptor for stdin of the process
+  //! File descriptor for stdin of the process.
   gint stdin;
-  //! File descriptor for stdout of the process
+  //! File descriptor for stdout of the process.
   gint stdout;
-  //! File descriptor for stderr of the process
+  //! File descriptor for stderr of the process.
   gint stderr;
 
-  //! Whether the process has stopped
+  //! Whether the process has stopped.
   bool stopped;
-  //! Exit error if any
+  //! Mutex for stop event.
+  mtx_t mtx;
+  //! Exit error if any.
   GError *error;
-  //! Callback when finish
-  SubprocessExitCallback onexit;
-  //! Additional userdata
-  void *onexit_userdata;
+  //! Callback when finish.
+  ProcessExitCallback onexit;
+  //! User data.
+  void *userdata;
 };
 
+
 /**
- * @memberof Subprocess
- * @brief Frees associated resources of a Subprocess.
+ * @memberof Process
+ * @brief Frees associated resources of a Process.
  *
- * The function does not check whether the child program has stopped.
+ * If the child program has not stopped, it will be killed and a warning will be
+ * displayed.
  *
- * @param p a Subprocess
+ * @param p a Process
  */
-void Subprocess_destroy (struct Subprocess *p);
+void Process_destroy (struct Process *p);
 /**
- * @memberof Subprocess
- * @brief Initializes a Subprocess and executes a child program with given
+ * @memberof Process
+ * @brief Initializes a Process and executes a child program with given
  *        `argv` and `envp`.
  *
  * The child program is specified by the only argument that must be provided,
@@ -71,19 +77,21 @@ void Subprocess_destroy (struct Subprocess *p);
  * If `p` is NULL, the child is executed synchronously, otherwise
  * asynchronously.
  *
- * @param p a Subprocess [optional]
+ * @param p a Process [optional]
  * @param argv child's argument vector [array zero-terminated=1]
  * @param envp child's environment, or NULL to inherit parent's
  *             [array zero-terminated=1][optional]
  * @param selfpath path to be avoided when searching `argv[0]` in `PATH`
  *                 [optional]
+ * @param onexit Callback when process exits [optional]
+ * @param userdata User data [optional]
  * @param[out] error a return location for a GError [optional]
  * @return the exit status of the spawned process if synchronously, otherwise 0
  *         if success, otherwize nonzero
  */
-int Subprocess_init (
-  struct Subprocess *p, gchar **argv, gchar **envp, const char *selfpath,
-  SubprocessExitCallback onexit, void *onexit_userdata, GError **error);
+int Process_init (
+  struct Process *p, gchar **argv, gchar **envp, const char *selfpath,
+  ProcessExitCallback onexit, void *userdata, GError **error);
 
 
 #endif /* DFCC_SPAWN_SUBPROCESS_H */

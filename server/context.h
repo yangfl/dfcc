@@ -1,14 +1,14 @@
 #ifndef DFCC_SERVER_CONTEXT_H
 #define DFCC_SERVER_CONTEXT_H
 
+#include <stdatomic.h>
 #include <stdbool.h>
 
 #include <libsoup/soup.h>
-#include <gmodule.h>
 
 #include "config/config.h"
 #include "file/cache.h"
-#include "server/job.h"
+#include "server/session.h"
 
 
 /**
@@ -20,11 +20,8 @@ struct ServerContext {
   SoupServer *server;
   /// Config for the server.
   struct Config *config;
-  /// Source file cache.
-  struct Cache cache;
   /// Session table.
   struct SessionTable session_table;
-  struct JobTable jobtable;
 };
 
 
@@ -68,10 +65,12 @@ void ServerContext_destroy (struct ServerContext *server_ctx);
  * @param server_ctx a ServerContext
  * @param server a SoupServer
  * @param config a Config
+ * @param[out] error a return location for a GError [optional]
  * @return 0 if success, otherwize nonzero
  */
-int ServerContext_init (struct ServerContext *server_ctx,
-                        SoupServer *server, struct Config *config);
+int ServerContext_init (
+  struct ServerContext *server_ctx, SoupServer *server,
+  struct Config *config, GError **error);
 
 
 #endif /* DFCC_SERVER_CONTEXT_H */

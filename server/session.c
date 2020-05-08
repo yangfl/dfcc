@@ -3,14 +3,19 @@
 #include <gmodule.h>
 
 #include "file/remoteindex.h"
+#include "spawn/hookedprocessgroup.h"
+#include "log.h"
 #include "session.h"
 
 
 extern inline bool SessionID_vaild (SessionID sid);
+extern inline void Session_touch (struct Session *session);
+extern inline void Session_disconnect (struct Session *session);
+extern inline void Session_connect (struct Session *session);
 
 
-void Session_destroy (void *session) {
-  RemoteFileIndex_destroy(&((struct Session *) session)->file_index);
+void Session_destroy (struct Session *session) {
+  HookedProcessGroup_destroy((struct HookedProcessGroup *) session);
 }
 
 
@@ -20,10 +25,14 @@ void Session_free (void *session) {
 }
 
 
-int Session_init (struct Session *session, SessionID sid) {
-  session->sid = sid;
-  session->last_active = time(NULL);
-  RemoteFileIndex_init(&session->file_index);
+int Session_init (
+    struct Session *session, SessionID sid,
+    struct HookedProcessController *controller) {
+  return_if_fail(HookedProcessGroup_init(
+    (struct HookedProcessGroup *) session, sid, controller) == 0) 1;
+  Session_touch(session);
+  session->rc = 0;
+  session->destructor = (void (*) (void *)) Session_destroy;
   return 0;
 }
 
@@ -39,7 +48,12 @@ static gboolean SessionTable_clean_foreach_remove_cb (
   struct SessionTable_clean_foreach_remove_ctx *ctx =
     (struct SessionTable_clean_foreach_remove_ctx *) user_data;
   struct Session *session = (struct Session *) value;
-  return session->rc == 0 && ctx->now - session->last_active > ctx->timeout;
+  gboolean clean =
+    session->rc == 0 && ctx->now - session->last_active > ctx->timeout;
+  if (clean) {
+    g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_DEBUG, "Clean session %x", session->hgid);
+  }
+  return clean;
 }
 
 
@@ -58,16 +72,19 @@ struct Session *SessionTable_get (
     struct SessionTable *session_table, SessionID sid) {
   return_if_fail(SessionID_vaild(sid)) NULL;
 
-  GRWLockReaderLocker *locker =
-    g_rw_lock_reader_locker_new(&session_table->rwlock);
-  struct Session *session = g_hash_table_lookup(session_table->table, &sid);
-  g_rw_lock_reader_locker_free(locker);
-
-  if unlikely (session == NULL) {
+  struct Session *session = (struct Session *) HookedProcessController_lookup(
+    (struct HookedProcessController *) session_table, sid);
+  if unlikely (session == NULL && SessionID_vaild(sid)) {
+    g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_DEBUG, "Create session %x", sid);
     session = g_malloc(sizeof(struct Session));
-    Session_init(session, sid);
+    should (Session_init(
+        session, sid, (struct HookedProcessController *) session_table
+    ) == 0) otherwise {
+      g_free(session);
+      return NULL;
+    }
     g_rw_lock_writer_lock(&session_table->rwlock);
-    g_hash_table_insert(session_table->table, &session->sid, session);
+    g_hash_table_insert(session_table->table, &session->hgid, session);
     g_rw_lock_writer_unlock(&session_table->rwlock);
   }
 
@@ -76,14 +93,18 @@ struct Session *SessionTable_get (
 
 
 void SessionTable_destroy (struct SessionTable *session_table) {
-  g_hash_table_destroy(session_table->table);
-  g_rw_lock_clear(&session_table->rwlock);
+  HookedProcessController_destroy(
+    (struct HookedProcessController *) session_table);
 }
 
 
-int SessionTable_init (struct SessionTable *session_table) {
-  session_table->table =
-    g_hash_table_new_full(g_int_hash, g_int_equal, NULL, Session_free);
-  g_rw_lock_init(&session_table->rwlock);
+int SessionTable_init (
+    struct SessionTable *session_table, unsigned int jobs,
+    const char *selfpath, const char *hookfs, const char *socket_path,
+    const char *cache_dir, bool no_verify_cache, GError **error) {
+  return_if_fail(HookedProcessController_init(
+    (struct HookedProcessController *) session_table, jobs, selfpath,
+    hookfs, socket_path, cache_dir, no_verify_cache, error
+  ) == 0) 1;
   return 0;
 }

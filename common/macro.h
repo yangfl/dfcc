@@ -54,7 +54,7 @@
  *
  * @param test the test expression
  */
-#define should(test) if likely (test)
+#define should(test) if likely (test) {
 /**
  * @brief Tell what to do if an error happens.
  *
@@ -64,7 +64,7 @@
   should (fopen("/tmp/a", "w") != NULL) otherwise puts("Cannot open file!");
  * @endcode
  */
-#define otherwise ; else
+#define otherwise } else
 
 
 /**
@@ -127,6 +127,7 @@
   ({ __auto_type _a = (a); \
       __auto_type _b = (b); \
     _a < _b ? _a : _b; })
+
 
 /**
  * @}

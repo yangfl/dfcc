@@ -4,19 +4,17 @@
 #include "./version.h"
 
 
-#define DFCC_PORT 0xdfc
-
 #define DFCC_USER_AGENT DFCC_NAME "/" DFCC_VERSION
 
 #define DFCC_COOKIES_SID "SID="
 
 #define DFCC_RPC_PATH "/rpc"
 
-#define DFCC_RPC_COMPILE_METHOD_NAME "compile"
+#define DFCC_RPC_SUBMIT_METHOD_NAME "compile"
 // [argv], [envp], working_directory, info -> value
-#define DFCC_RPC_COMPILE_REQUEST_SIGNATURE "(asassa{sv})"
+#define DFCC_RPC_SUBMIT_REQUEST_SIGNATURE "(asassa{sv})"
 // jid
-#define DFCC_RPC_COMPILE_RESPONSE_SIGNATURE "u"
+#define DFCC_RPC_SUBMIT_RESPONSE_SIGNATURE "u"
 
 #define DFCC_RPC_ASSOCIATE_METHOD_NAME "associate"
 // path -> hash

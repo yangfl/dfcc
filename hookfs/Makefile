@@ -1,11 +1,15 @@
 DEBUG = 1
 
 CPPFLAGS ?= -fdiagnostics-color=always
-CFLAGS ?= -Wall
+CFLAGS ?=
 LDFLAGS ?=
+
+CWARN ?= -Wall -Wpointer-arith -Wuninitialized -Wpedantic
+CFLAGS += $(CWARN)
 
 ifeq ($(DEBUG), 1)
 	CFLAGS += -g -DDEBUG
+	LDFLAGS += -rdynamic
 else
 	CFLAGS += -Os
 	LDFLAGS += -s -flto

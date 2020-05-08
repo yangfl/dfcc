@@ -9,7 +9,7 @@
 #include "source/conffile.h"
 #include "source/default.h"
 #include "source/mux.h"
-#include "config/serverurl.h"
+#include "serverurl.h"
 #include "config.h"
 
 
@@ -29,7 +29,8 @@ const int Config__info_n = G_N_ELEMENTS(Config__info);
 static void Config_set_prgpath (struct Config *config) {
   int prgpath_len = wai_getExecutablePath(NULL, 0, NULL);
   config->prgpath = g_malloc(prgpath_len + 1);
-  wai_getExecutablePath(config->prgpath, prgpath_len, (int *) &config->prgdir_len);
+  wai_getExecutablePath(config->prgpath, prgpath_len,
+                        (int *) &config->prgdir_len);
   config->prgpath[prgpath_len] = '\0';
 }
 
@@ -96,9 +97,9 @@ void Config_destroy (struct Config *config) {
   g_free(config->prgpath);
 
   if (config->server_mode) {
-    return Config_destroy_server(config);
+    Config_destroy_server(config);
   } else {
-    return Config_destroy_client(config);
+    Config_destroy_client(config);
   }
 }
 

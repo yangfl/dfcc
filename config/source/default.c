@@ -4,34 +4,36 @@
 #include <glib.h>
 
 #include "./version.h"
-#include "config/config.h"
-#include "server/protocol.h"
+#include "../log.h"
+#include "../config.h"
 #include "default.h"
 
 
 static int Config_fill_default_server (struct Config *config) {
   if (config->hookfs == NULL) {
-    static const char exe_dir[] = "";
+#define PROGRAMDIR NULL
     static const char * const hookfs_search_paths[] = {
 #ifdef HOOKFS_SEARCH_PATH
       HOOKFS_SEARCH_PATH,
 #endif
-      "/usr/lib/dfcc/" DFCC_HOOKFS_FILENAME, exe_dir, "./" DFCC_HOOKFS_FILENAME,
+      "/usr/lib/dfcc/" DFCC_HOOKFS_FILENAME,
+      PROGRAMDIR,
+      "./" DFCC_HOOKFS_FILENAME,
     };
 
     for (int i = 0; i < G_N_ELEMENTS(hookfs_search_paths); i++) {
-      if (hookfs_search_paths[i] == exe_dir) {
+      if (hookfs_search_paths[i] == PROGRAMDIR) {
         char dirsep = config->prgpath[config->prgdir_len];
         config->prgpath[config->prgdir_len] = '\0';
-
         char *prgdir_search_path =
-          g_build_path(config->prgpath, DFCC_HOOKFS_FILENAME, NULL);
+          g_build_filename(config->prgpath, DFCC_HOOKFS_FILENAME, NULL);
         config->prgpath[config->prgdir_len] = dirsep;
+
         if (g_file_test(prgdir_search_path, G_FILE_TEST_IS_REGULAR)) {
           config->hookfs = prgdir_search_path;
           goto hookfs_found;
         } else {
-          g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+          g_log(DFCC_CONFIG_NAME, G_LOG_LEVEL_DEBUG,
                 "\"%s\" does not exist", prgdir_search_path);
           g_free(prgdir_search_path);
         }
@@ -40,17 +42,17 @@ static int Config_fill_default_server (struct Config *config) {
           config->hookfs = g_strdup(hookfs_search_paths[i]);
           goto hookfs_found;
         } else {
-          g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+          g_log(DFCC_CONFIG_NAME, G_LOG_LEVEL_DEBUG,
                 "\"%s\" does not exist", hookfs_search_paths[i]);
         }
       }
     }
 
-    g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL, "Cannot find " DFCC_HOOKFS_FILENAME);
+    g_log(DFCC_CONFIG_NAME, G_LOG_LEVEL_CRITICAL, "Cannot find " DFCC_HOOKFS_FILENAME);
     return 1;
 
     hookfs_found:;
-    g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Use hookfs at \"%s\"", config->hookfs);
+    g_log(DFCC_CONFIG_NAME, G_LOG_LEVEL_DEBUG, "Use hookfs at \"%s\"", config->hookfs);
   }
 
   if (config->port == 0) {

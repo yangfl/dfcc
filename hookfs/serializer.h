@@ -43,7 +43,7 @@ struct Serializer {
  * @memberof Serializer
  * @brief Serializes a token.
  *
- * @param serdes Serializer
+ * @param serdes a Serializer
  * @param data data to be serialized
  * @param len length of `data`
  */
@@ -67,22 +67,32 @@ inline int serialize (struct Serializer *serdes, const void *data, Serializer__s
  * @memberof Serializer
  * @brief Serializes a null-terminated string.
  *
- * @param serdes->ostream output FILE serdes->ostream
+ * @param serdes a Serializer
  * @param str a null-terminated string
  */
 inline int serialize_string (struct Serializer *serdes, const char *str) {
-  return serialize(serdes->ostream, str, strlen(str) + 1);
+  return serialize(serdes, str, strlen(str) + 1);
 }
 
 /**
  * @memberof Serializer
  * @brief Serializes a literal string.
  *
- * @param serdes->ostream output FILE serdes->ostream
+ * @param serdes a Serializer
  * @param str a literal string
  */
 #define serialize_literal(serdes, str) \
-  serialize((serdes)->ostream, (str), sizeof(str))
+  serialize((serdes), (str), sizeof(str))
+
+/**
+ * @memberof Serializer
+ * @brief Serializes a numerical variable.
+ *
+ * @param serdes a Serializer
+ * @param num a number
+ */
+#define serialize_numerical(serdes, num) \
+  serialize((serdes), &(num), sizeof(num))
 
 //! @memberof Serializer
 int serialize_strv (struct Serializer *serdes, char * const *data);
@@ -98,7 +108,7 @@ void *deserialize (struct Serializer *serdes, void *buf, size_t size, size_t *re
 
 //! @memberof Serializer
 inline void *deserialize_new (struct Serializer *serdes, size_t *read) {
-  return deserialize(serdes->istream, NULL, 0, read);
+  return deserialize(serdes, NULL, 0, read);
 }
 
 //! @memberof Serializer

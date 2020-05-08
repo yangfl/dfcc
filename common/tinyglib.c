@@ -90,7 +90,9 @@ static void g_array_maybe_expand (GArray *array, size_t len) {
 
   if (want_alloc > array->alloc) {
     want_alloc = want_alloc / 2 * 3;
-    want_alloc = max(want_alloc, MIN_ARRAY_SIZE);
+    if (MIN_ARRAY_SIZE > want_alloc) {
+      want_alloc = MIN_ARRAY_SIZE;
+    }
 
     array->data = g_realloc(array->data, want_alloc);
 

@@ -14,10 +14,9 @@
 #include "config/config.h"
 #include "config/serverurl.h"
 #include "file/hash.h"
-#include "server/job.h"
 #include "server/protocol.h"
-#include "./version.h"
-#include "client/sessionid.h"
+#include "log.h"
+#include "sessionid.h"
 #include "remote.h"
 
 
@@ -26,7 +25,7 @@ struct RemoteConnection {
   SoupCookieJar *cookiejar;
   char sessionid_cookies[sizeof(DFCC_COOKIES_SID) + 2 * sizeof(SessionID)];
 
-  JobID jid;
+  GPid jid;
   SoupURI *baseuri;
   char *rpcurl;
   SoupURI *uploaduri;
@@ -138,11 +137,8 @@ static int RemoteConnection_init (struct RemoteConnection *conn, bool debug) {
   }
 
   // conn->sessionid_cookies = DFCC_COOKIES_SID + buf2hex(sessionid);
-  SessionID sessionid = Client__get_session_id();
-  strcpy(conn->sessionid_cookies, DFCC_COOKIES_SID);
-  buf2hex(conn->sessionid_cookies + strlen(DFCC_COOKIES_SID),
-          &sessionid, sizeof(SessionID));
-  conn->sessionid_cookies[sizeof(conn->sessionid_cookies) - 1] = '\0';
+  snprintf(conn->sessionid_cookies, sizeof(conn->sessionid_cookies),
+           DFCC_COOKIES_SID "%x", Client__get_session_id());
 
   conn->baseuri = NULL;
   conn->rpcurl = NULL;
@@ -175,7 +171,7 @@ static GVariant *Client_pack_settings (const struct Config *config) {
       case_type(INT, int, int32)
       case_type(INT64, long long, int64)
       default:
-        g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING,
               "Unknown type '%s' for key '%s'",
               g_type_name(Config__info[i].type), Config__info[i].key);
     }
@@ -196,12 +192,12 @@ static int Client_try_submit (
 
   // prepare cc args
   char *xmlrpc_msg = soup_xmlrpc_build_request(
-    DFCC_RPC_COMPILE_METHOD_NAME,
+    DFCC_RPC_SUBMIT_METHOD_NAME,
     g_variant_new("(^as^assv)", cc_argv, cc_envp,
                   cc_working_directory, settings),
     &error);
   should (error == NULL) otherwise {
-    g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
+    g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_CRITICAL,
           "Error when building XML RPC query: %s", error->message);
     g_error_free(error);
     return 1;
@@ -211,7 +207,7 @@ static int Client_try_submit (
   int ret = 1;
 
   for (int i = 0; server_list[i].baseurl != NULL; i++) {
-    g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+    g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG,
           "Trying server %s", server_list[i].baseurl);
 
     guint status;
@@ -220,10 +216,10 @@ static int Client_try_submit (
 
     if (!SOUP_STATUS_IS_SUCCESSFUL(status)) {
       if (status == SOUP_STATUS_SERVICE_UNAVAILABLE) {
-        g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG,
               "Server %s full", server_list[i].baseurl);
       } else {
-        g_log(DFCC_NAME, G_LOG_LEVEL_INFO,
+        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_INFO,
               "Failed to connect to server %s: %s",
               server_list[i].baseurl, msg->reason_phrase);
       }
@@ -232,11 +228,12 @@ static int Client_try_submit (
     }
 
     GVariant *response = soup_xmlrpc_parse_response_e(
-      msg, DFCC_RPC_COMPILE_RESPONSE_SIGNATURE, G_LOG_LEVEL_MESSAGE);
+      msg, DFCC_RPC_SUBMIT_RESPONSE_SIGNATURE,
+      DFCC_CLIENT_NAME, G_LOG_LEVEL_MESSAGE);
     g_object_unref(msg);
 
     if (response != NULL) {
-      g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+      g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG,
             "Selected server %s", server_list[i].baseurl);
       conn->jid = g_variant_get_uint32(response);
       g_variant_unref(response);
@@ -254,7 +251,7 @@ static GVariant *Client_query_job (
     struct RemoteConnection *conn, gboolean *finished, GVariant **filelist) {
   unsigned int status;
   GVariant *response = dfcc_session_xmlrpc(
-    conn->session, conn->rpcurl, QUERY, &status, conn->jid, FALSE);
+    conn->session, conn->rpcurl, QUERY, DFCC_CLIENT_NAME, &status, conn->jid, FALSE);
   return_if_fail(response != NULL) NULL;
   g_variant_get(response, DFCC_RPC_QUERY_RESPONSE_SIGNATURE,
                 finished, filelist);
@@ -266,7 +263,7 @@ static int Client_file_associate (
     struct RemoteConnection *conn, GVariant *filelist) {
   unsigned int status;
   GVariant *response = dfcc_session_xmlrpc_variant(
-    conn->session, conn->rpcurl, ASSOCIATE, &status, filelist);
+    conn->session, conn->rpcurl, ASSOCIATE, DFCC_CLIENT_NAME, &status, filelist);
   return_if_fail(response != NULL) 1;
   g_variant_unref(response);
   return 0;
@@ -279,7 +276,7 @@ static int Client_file_upload (
   struct MappedFile m;
 
   should (MappedFile_init(&m, path, &error) == 0) otherwise {
-    g_log(DFCC_NAME, G_LOG_LEVEL_ERROR,
+    g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_ERROR,
           "Open file '%s' failed: %s", path, error->message);
     g_error_free(error);
     return 1;
@@ -292,7 +289,7 @@ static int Client_file_upload (
 
   int ret = 0;
   should (msg->status_code == SOUP_STATUS_OK) otherwise {
-    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+    g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING,
           "Cannot upload, HTTP code %d", msg->status_code);
     ret = 1;
   }
@@ -314,7 +311,7 @@ static int Client_file_download (
   do_once {
     soup_session_send_message(conn->session, msg);
     should (msg->status_code == SOUP_STATUS_OK) otherwise {
-      g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
+      g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_CRITICAL,
             "Cannot download %s, HTTP code %d", s_hash, msg->status_code);
       ret = 1;
       break;
@@ -323,7 +320,7 @@ static int Client_file_download (
     GError *error = NULL;
     FILE *output = g_fopen_e(path, "w", &error);
     should (output != NULL) otherwise {
-      g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL, error->message);
+      g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_CRITICAL, error->message);
       g_error_free(error);
       ret = 1;
       break;
@@ -333,7 +330,7 @@ static int Client_file_download (
       should (fwrite(
           msg->response_body->data, msg->response_body->length, 1, output
       ) == msg->response_body->length) otherwise {
-        g_log(DFCC_NAME, G_LOG_LEVEL_CRITICAL,
+        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_CRITICAL,
               "File write failed: %s", strerror(errno));
         ret = 1;
         break;
@@ -351,7 +348,7 @@ static int Client_file_download (
 static int Client_remote_missing (
     struct RemoteConnection *conn, GVariant *filelist) {
   return_if_g_variant_not_type(
-    filelist, DFCC_RPC_QUERY_RESPONSE_MISSING_SIGNATURE) 1;
+    filelist, DFCC_RPC_QUERY_RESPONSE_MISSING_SIGNATURE, DFCC_CLIENT_NAME) 1;
 
   // hash list
   GVariantBuilder builder;
@@ -370,7 +367,7 @@ static int Client_remote_missing (
 
       FileHash hash = FileHash_from_file(path, &error);
       should (hash != 0) otherwise {
-        g_log(DFCC_NAME, G_LOG_LEVEL_ERROR,
+        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_ERROR,
               "Coumpute hash of file '%s' failed: %s", path, error->message);
         g_error_free(error);
         goto loop_error;
@@ -401,7 +398,7 @@ static int Client_remote_finish (
     struct RemoteConnection *conn, GVariant *filelist,
     struct Result * restrict result) {
   return_if_g_variant_not_type(
-    filelist, DFCC_RPC_QUERY_RESPONSE_FINISH_SIGNATURE) 1;
+    filelist, DFCC_RPC_QUERY_RESPONSE_FINISH_SIGNATURE, DFCC_CLIENT_NAME) 1;
 
   GVariant *outputs;
   GVariant *info;
@@ -437,7 +434,7 @@ static int Client_remote_finish (
       key, Result__info, &Result__info_n_,
       sizeof(struct StructInfo), StructInfo_match);
     should (keyinfo != NULL) otherwise {
-      g_log(DFCC_NAME, G_LOG_LEVEL_WARNING, "Unknown return info '%s'", key);
+      g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING, "Unknown return info '%s'", key);
       continue;
     }
     switch (keyinfo->type) {
@@ -446,7 +443,7 @@ static int Client_remote_finish (
       case_type(INT, int, int32)
       case_type(INT64, long long, int64)
       default:
-        g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING,
               "Unknown type '%s' for key '%s'",
               g_type_name(keyinfo->type), keyinfo->key);
     }
@@ -468,7 +465,7 @@ int Client_run_remotely (
   if unlikely (Client_try_submit(
       &conn, config->server_list, remote_argv, remote_envp,
       config->cc_working_directory, Client_pack_settings(config)) != 0) {
-    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING, "No server available");
+    g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING, "No server available");
     RemoteConnection_destroy(&conn);
     return 1;
   }
@@ -483,9 +480,9 @@ int Client_run_remotely (
       break;
     }
 
-    should (finished ?
+    should ((finished ?
         Client_remote_missing(&conn, filelist) :
-        Client_remote_finish(&conn, filelist, result) == 0) otherwise {
+        Client_remote_finish(&conn, filelist, result)) == 0) otherwise {
       ret = 1;
       g_variant_unref(response);
       break;

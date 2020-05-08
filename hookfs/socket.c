@@ -35,13 +35,13 @@ void Socket_destroy (struct Socket *sock) {
 int Socket_init (struct Socket *sock, const char *path) {
   int ret;
 
-  should (mtx_init(&sock->mtx, mtx_plain) == thrd_success) {
+  should (mtx_init(&sock->mtx, mtx_plain) == thrd_success) otherwise {
     perror("mtx_init");
     return 1;
   }
 
   sock->fd = socket(PF_UNIX, SOCK_SEQPACKET, 0);
-  should (sock->fd >= 0) {
+  should (sock->fd >= 0) otherwise {
     perror("sock");
     return 1;
   }
@@ -51,6 +51,7 @@ int Socket_init (struct Socket *sock, const char *path) {
       .sun_family = AF_UNIX,
     };
     size_t path_len = strlen(path);
+    addr.sun_path[0] = '\0';
     memcpy(addr.sun_path + 1, path, path_len);
     should (connect(sock->fd, (struct sockaddr *) &addr,
         sizeof(addr.sun_family) + 1 + path_len) == 0) otherwise {

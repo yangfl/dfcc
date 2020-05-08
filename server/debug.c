@@ -1,6 +1,6 @@
 #include <libsoup/soup.h>
 
-#include "./version.h"
+#include "log.h"
 
 
 static void Server_Debug_format_HTTP_content (
@@ -42,7 +42,7 @@ static void Server_Debug_format_response (GString *buf, SoupMessage *msg) {
 void Server_Debug_request (SoupMessage *msg, const char *path) {
   GString *request = g_string_new("\n");
   Server_Debug_format_request(request, msg, path);
-  g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, request->str);
+  g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_DEBUG, request->str);
   g_string_free(request, TRUE);
 }
 
@@ -54,7 +54,7 @@ void Server_Debug_request_response (SoupMessage *msg, const char *path) {
   g_string_append_c(request, '\n');
   Server_Debug_format_response(request, msg);
 
-  g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, request->str);
+  g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_DEBUG, request->str);
   g_string_free(request, TRUE);
 }
 
@@ -63,7 +63,7 @@ void Server_Debug_listening (SoupServer *server) {
   GSList *uris = soup_server_get_uris(server);
   for (GSList *u = uris; u; u = u->next) {
     char *str = soup_uri_to_string(u->data, FALSE);
-    g_log(DFCC_NAME, G_LOG_LEVEL_INFO, "Listening on %s", str);
+    g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_INFO, "Listening on %s", str);
     g_free(str);
     soup_uri_free(u->data);
   }

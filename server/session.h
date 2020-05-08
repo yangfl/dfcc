@@ -1,25 +1,13 @@
 #ifndef DFCC_SERVER_SESSION_H
 #define DFCC_SERVER_SESSION_H
 
+#include <stdatomic.h>
 #include <time.h>
 
-#include <glib.h>
 #include <gmodule.h>
 
-#include "file/remoteindex.h"
-
-
-/**
- * @memberof Session
- * @brief Session ID
- */
-typedef uint32_t SessionID;
-/**
- * @memberof Session
- * @static
- * @brief Maximum possible Session ID
- */
-#define SessionID__MAX UINT32_MAX
+#include "spawn/hookedprocessgroup.h"
+#include "server/_sessionid.h"
 
 
 /**
@@ -30,29 +18,37 @@ typedef uint32_t SessionID;
  * @return `true` if vaild
  */
 inline bool SessionID_vaild (SessionID sid) {
-  return sid != 0 && sid != SessionID__MAX;
+  return sid != SessionID_INVAILD && sid != SessionID__MAX;
 }
 
 
 /**
  * @ingroup Server
+ * @extends HookedProcessGroup
  * @brief Contains the information of a client identification.
  */
 struct Session {
-  /// Unique ID for this session.
-  SessionID sid;
+  struct HookedProcessGroup;
+  /// Time when this session was last active.
+  time_t last_active;
   /** @brief Reference counter giving the number of connections
    *         currently using this session.
    */
-  unsigned int rc;
-  /// Time when this session was last active.
-  time_t last_active;
-  /// Files of the remote client.
-  struct RemoteFileIndex file_index;
-  /// Compiler jobs.
-  //struct JobTable jobtable;
+  atomic_int rc;
 };
 
+
+inline void Session_touch (struct Session *session) {
+  session->last_active = time(NULL);
+}
+
+inline void Session_disconnect (struct Session *session) {
+  session->rc--;
+}
+
+inline void Session_connect (struct Session *session) {
+  session->rc++;
+}
 
 /**
  * @memberof Session
@@ -60,7 +56,7 @@ struct Session {
  *
  * @param session a Session
  */
-void Session_destroy (void *session);
+void Session_destroy (struct Session *session);
 /**
  * @memberof Session
  * @brief Frees a Session and associated resources.
@@ -76,20 +72,18 @@ void Session_free (void *session);
  * @param sid Session ID
  * @return 0 if success, otherwize nonzero
  */
-int Session_init (struct Session *session, SessionID sid);
+int Session_init (
+  struct Session *session, SessionID sid,
+  struct HookedProcessController *controller);
 
 
 /**
  * @ingroup Server
- * @brief Contains the information of all sessions.
- *
- * @sa Session
+ * @extends HookedProcessController
+ * @brief Contains the information of all Session.
  */
 struct SessionTable {
-  /// Hash table mapping SessionID to Session.
-  GHashTable *table;
-  /// Lock for `table`.
-  GRWLock rwlock;
+  struct HookedProcessController;
 };
 
 
@@ -130,7 +124,10 @@ void SessionTable_destroy (struct SessionTable *session_table);
  * @param session_table a SessionTable
  * @return 0 if success, otherwize nonzero
  */
-int SessionTable_init (struct SessionTable *session_table);
+int SessionTable_init (
+  struct SessionTable *session_table, unsigned int jobs,
+  const char *selfpath, const char *hookfs, const char *socket_path,
+  const char *cache_dir, bool no_verify_cache, GError **error);
 
 
 #endif /* DFCC_SERVER_SESSION_H */

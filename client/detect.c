@@ -34,7 +34,7 @@ bool Client_detect_server (
 
   do_once {
     if (msg->status_code != SOUP_STATUS_OK) {
-      g_log(DFCC_NAME, G_LOG_LEVEL_INFO,
+      g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_INFO,
             "Server %s not responsing", server_url->baseurl);
       g_object_unref(msg);
       break;
@@ -48,11 +48,11 @@ bool Client_detect_server (
 
     should (server_info != NULL) otherwise {
       if (error->domain == SOUP_XMLRPC_FAULT) {
-        g_log(DFCC_NAME, G_LOG_LEVEL_MESSAGE,
+        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_MESSAGE,
               "Server %s report fault: %d %s",
               server_url->baseurl, error->code, error->message);
       } else {
-        g_log(DFCC_NAME, G_LOG_LEVEL_MESSAGE,
+        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_MESSAGE,
               "Error when parsing response from server %s: %s",
               server_url->baseurl, error->message);
       }
@@ -76,7 +76,7 @@ bool Client_detect_server (
               value_type, info_response_format[i].type)) otherwise {
             gchar *expected_value_type_string =
               g_variant_type_dup_string(info_response_format[i].type);
-            g_log(DFCC_NAME, G_LOG_LEVEL_MESSAGE,
+            g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_MESSAGE,
                   "Item '%s' from server %s should have type '%s', got '%s'",
                   key, server_url->baseurl,
                   expected_value_type_string, g_variant_get_type_string(value));
@@ -91,44 +91,44 @@ bool Client_detect_server (
         case 0: {
           const gchar *server_version = g_variant_get_string(value, NULL);
           should (strscmp(server_version, DFCC_NAME "/") == 0) otherwise {
-            g_log(DFCC_NAME, G_LOG_LEVEL_MESSAGE, "Unexpected server %s: %s",
+            g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_MESSAGE, "Unexpected server %s: %s",
                   server_url->baseurl, server_version);
             goto unexpected;
           }
-          g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Server: %s", server_version);
+          g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG, "Server: %s", server_version);
           break;
         }
         case 1: {
           int nprocs_conf = g_variant_get_int32(value);
-          g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+          g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG,
                 "Server has %d core(s) configured", nprocs_conf);
           break;
         }
         case 2: {
           int nprocs_onln = g_variant_get_int32(value);
-          g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+          g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG,
                 "Server has %d core(s) online", nprocs_onln);
           break;
         }
         case 3: {
           jobs = g_variant_get_int32(value);
-          g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+          g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG,
                 "Server can has %d job(s)", jobs);
           break;
         }
         case 4: {
           int current_jobs = g_variant_get_int32(value);
-          g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
+          g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG,
                 "Server currently has %d job(s)", current_jobs);
           if (current_jobs >= jobs) {
-            g_log(DFCC_NAME, G_LOG_LEVEL_INFO,
+            g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_INFO,
                   "Server %s is full", server_url->baseurl);
             goto unexpected;
           }
           break;
         }
         default:
-          g_log(DFCC_NAME, G_LOG_LEVEL_MESSAGE, "Item '%s' has type '%s'", key,
+          g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_MESSAGE, "Item '%s' has type '%s'", key,
                 g_variant_get_type_string (value));
       }
 

@@ -3,12 +3,15 @@
 
 #define DFCC_NAME "dfcc"
 #define DFCC_VERSION "0.0"
+#define DFCC_PORT 0xdfc
 
 #define GETTEXT_PACKAGE DFCC_NAME
 
 #define DFCC_LOOP_DETECTION_ENV "DFCC_SPAWNING_PROCESS"
 
 #define DFCC_HOOKFS_FILENAME "hookfs.so"
+
+#define HOOKFS_SOCKET_PATH "/hookfs/" DFCC_NAME
 
 
 #endif /* DFCC_VERSION_H */

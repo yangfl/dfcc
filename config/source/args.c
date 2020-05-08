@@ -2,7 +2,7 @@
 
 #include "common/macro.h"
 #include "./version.h"
-#include "config/config.h"
+#include "../config.h"
 #include "args.h"
 
 
@@ -72,6 +72,10 @@ int Config_parse_args (struct Config *config, char *args[]) {
     return 1;
   }
   g_option_context_free(context);
+
+  if (config->debug) {
+    g_setenv("G_MESSAGES_DEBUG", "all", TRUE);
+  }
 
   if (config->server_mode) {
     if (config->hookfs != NULL) {

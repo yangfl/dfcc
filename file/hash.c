@@ -7,7 +7,7 @@
 #include "common/hexstring.h"
 #include "common/macro.h"
 #include "common/wrapper/mappedfile.h"
-#include "./version.h"
+#include "log.h"
 #include "hash.h"
 
 

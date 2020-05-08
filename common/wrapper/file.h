@@ -13,15 +13,14 @@
 #include <glib/gstdio.h>
 
 #include "common/macro.h"
+#include "errno.h"
 
-
-void file_io_set_error (GError **error, const char *format);
 
 #define WRAP_IO_GERROR(type, func, params, args, test, msg) \
 inline type func ## _e params { \
   type ret = func args; \
   should (ret test) otherwise { \
-    file_io_set_error(error, msg ": %s"); \
+    g_set_error_errno(error, G_FILE_ERROR, msg ": %s"); \
   } \
   return ret; \
 }
@@ -48,7 +47,11 @@ WRAP_IO_GERROR(
     const void *ptr, size_t size, size_t nmemb, FILE *stream, GError **error),
   (ptr, size, nmemb, stream), == 0, "Failed to fwrite")
 
+#undef WRAP_IO_GERROR
+
+
 ssize_t readfd (int fd, char *path, size_t maxsize);
+
 
 /**@}*/
 

@@ -22,4 +22,5 @@ int Server_start (struct Config *config);
 
 
 /**@}*/
+
 #endif /* DFCC_SERVER_H */

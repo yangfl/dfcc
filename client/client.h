@@ -18,4 +18,5 @@ int Client_start (struct Config *config);
 
 
 /**@}*/
+
 #endif /* DFCC_CLIENT_H */

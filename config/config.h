@@ -66,7 +66,7 @@ struct Config {
   /**
    * @brief Maximum number of possible jobs the server can handle
    *        simultaneously.
-   * @sa JobTable.max_njob
+   * @sa ServerContext.n_available
    */
   unsigned int jobs;
   /// The time between housekeeping, in milliseconds (1/1000ths of a second).
