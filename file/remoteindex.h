@@ -10,8 +10,8 @@
 
 //! @ingroup File
 struct RemoteFileIndex {
-  GHashTable *index;
-  GRWLock index_rwlock;
+  GHashTable *table;
+  GRWLock rwlock;
   struct Broadcast sta;
 };
 
@@ -32,7 +32,20 @@ struct FileEntry *RemoteFileIndex_try_get (
  * @param index a RemoteFileIndex
  */
 void RemoteFileIndex_destroy (struct RemoteFileIndex *index);
-//! @memberof RemoteFileIndex
+/**
+ * @memberof RemoteFileIndex
+ * @brief Frees a RemoteFileIndex and its associated resources.
+ *
+ * @param index a RemoteFileIndex
+ */
+void RemoteFileIndex_free (void *index);
+/**
+ * @memberof RemoteFileIndex
+ * @brief Initializes a RemoteFileIndex.
+ *
+ * @param index a RemoteFileIndex
+ * @return 0 if success, otherwize nonzero
+ */
 int RemoteFileIndex_init (struct RemoteFileIndex *index);
 
 

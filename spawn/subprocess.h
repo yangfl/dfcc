@@ -13,24 +13,34 @@
 //! @ingroup Spawn
 extern GQuark DFCC_SPAWN_ERROR;
 
+
+struct Subprocess;
+//! @memberof Subprocess
+typedef void (*SubprocessExitCallback) (struct Subprocess *, void *);
+
+
 /**
  * @ingroup Spawn
  * @brief Contains the information of a spawned process.
  */
 struct Subprocess {
   GPid pid;
+
   //! File descriptor for stdin of the process
   gint stdin;
   //! File descriptor for stdout of the process
   gint stdout;
   //! File descriptor for stderr of the process
   gint stderr;
+
   //! Whether the process has stopped
   bool stopped;
+  //! Exit error if any
   GError *error;
-  void (*onfinish)(struct Subprocess *spawn, void *userdata);
+  //! Callback when finish
+  SubprocessExitCallback onexit;
   //! Additional userdata
-  void *userdata;
+  void *onexit_userdata;
 };
 
 /**
@@ -41,11 +51,7 @@ struct Subprocess {
  *
  * @param p a Subprocess
  */
-inline void Subprocess_destroy (struct Subprocess *p) {
-  g_spawn_close_pid(p->pid);
-  g_error_free(p->error);
-}
-
+void Subprocess_destroy (struct Subprocess *p);
 /**
  * @memberof Subprocess
  * @brief Initializes a Subprocess and executes a child program with given
@@ -76,8 +82,8 @@ inline void Subprocess_destroy (struct Subprocess *p) {
  *         if success, otherwize nonzero
  */
 int Subprocess_init (
-    struct Subprocess *p, gchar **argv, gchar **envp,
-    const char *selfpath, GError **error);
+  struct Subprocess *p, gchar **argv, gchar **envp, const char *selfpath,
+  SubprocessExitCallback onexit, void *onexit_userdata, GError **error);
 
 
 #endif /* DFCC_SPAWN_SUBPROCESS_H */

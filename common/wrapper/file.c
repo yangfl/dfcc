@@ -22,3 +22,10 @@ void file_io_set_error (GError **error, const char *format) {
   int saved_errno = errno;
   g_set_error(error, G_FILE_ERROR, saved_errno, format, g_strerror(saved_errno));
 }
+
+
+ssize_t readfd (int fd, char *path, size_t maxsize) {
+  char pathbuf[512];
+  snprintf(pathbuf, sizeof(pathbuf), "/proc/self/fd/%d", fd);
+  return readlink(pathbuf, path, maxsize);
+}

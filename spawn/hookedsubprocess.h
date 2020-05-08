@@ -56,17 +56,6 @@ inline struct HookedSubprocessOutput *HookedSubprocessOutput_new (
 }
 
 
-struct HookedSubprocess;
-//! @memberof HookedSubprocess
-typedef void (*HookedSubprocessNextFunc) (struct HookedSubprocess *);
-
-//! @memberof HookedSubprocess
-enum HookedSubprocessPendingType {
-  HOOKED_PENDING_NONE = 0,
-  HOOKED_PENDING_PATH_HASH,
-  HOOKED_PENDING_HASH_FILE
-};
-
 /**
  * @ingroup Spawn
  * @extends Subprocess
@@ -74,19 +63,12 @@ enum HookedSubprocessPendingType {
 struct HookedSubprocess {
   struct Subprocess;
 
-  GString *stdout_buf;
-
   struct RemoteFileIndex *index;
   struct Cache *cache;
   GHashTable *outputs;
 
-  HookedSubprocessNextFunc onmissing;
+  void (*onmissing) (struct HookedSubprocess *, void *, char *);
   void *onmissing_userdata;
-  enum HookedSubprocessPendingType pending_type;
-  union {
-    char *pending_path;
-    FileHash pending_hash;
-  };
 };
 
 

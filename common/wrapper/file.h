@@ -48,6 +48,7 @@ WRAP_IO_GERROR(
     const void *ptr, size_t size, size_t nmemb, FILE *stream, GError **error),
   (ptr, size, nmemb, stream), == 0, "Failed to fwrite")
 
+ssize_t readfd (int fd, char *path, size_t maxsize);
 
 /**@}*/
 

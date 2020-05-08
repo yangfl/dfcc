@@ -56,7 +56,7 @@ static void Server_rpc_compile (
     soup_xmlrpc_message_set_fault(msg, 0, error->message);
     g_error_free(error);
   }
-  JobTable_insert(&server_ctx->jobtable, job);
+  JobTable_insert(&server_ctx->jobtable, job, true);
 
   g_free(cc_argv);
   g_free(cc_envp);
@@ -101,6 +101,21 @@ static void Server_rpc_associate (
   }
 
   g_variant_unref(param);
+}
+
+
+/**
+ * @brief Processes XMLRPC requests of nonblockingly querying status of
+ *        compiling jobs.
+ *
+ * @param server_ctx a ServerContext
+ * @param session a Session
+ * @param msg a SoupMessage
+ * @param param a GVariant
+ */
+static void Server_rpc_query_callback (
+    struct ServerContext *server_ctx, struct Session *session,
+    SoupMessage *msg, GVariant *param) {
 }
 
 
@@ -154,12 +169,13 @@ static const struct ServerRPCTable rpcs[] = {
 };
 
 
-static inline int Server__parse_method_name (const char *method_name) {
+static inline int Server__find_method_name (const char *method_name) {
   for (int i = 0; i < G_N_ELEMENTS(rpcs); i++) {
     if (strcmp(method_name, rpcs[i].name) == 0) {
       return i;
     }
   }
+
   return -1;
 }
 
@@ -177,7 +193,8 @@ void Server_handle_rpc (
   do_once {
     SoupXMLRPCParams *xmlrpc_params;
     char *method_name = soup_xmlrpc_parse_request(
-      msg->request_body->data, msg->request_body->length, &xmlrpc_params, &error);
+      msg->request_body->data, msg->request_body->length,
+      &xmlrpc_params, &error);
     should (method_name != NULL) otherwise {
       soup_xmlrpc_message_log_and_set_fault(
         msg, G_LOG_LEVEL_WARNING, 1,
@@ -185,7 +202,7 @@ void Server_handle_rpc (
       break;
     }
 
-    int method_index = Server__parse_method_name(method_name);
+    int method_index = Server__find_method_name(method_name);
     should (method_index != -1) otherwise {
       soup_xmlrpc_message_log_and_set_fault(
         msg, G_LOG_LEVEL_WARNING, 1,
@@ -208,7 +225,9 @@ void Server_handle_rpc (
     return rpcs[method_index].handler(server_ctx, session, msg, xmlrpc_variant);
   }
 
-  g_error_free(error);
+  if (error != NULL) {
+    g_error_free(error);
+  }
 }
 
 
@@ -234,7 +253,7 @@ void Server_handle_download (
     const char *path, SoupMessage *msg) {
   do_once {
     const char *s_token =
-      path + server_ctx->base_path_len + strlen(DFCC_DOWNLOAD_PATH);
+      path + server_ctx->config->base_path_len + strlen(DFCC_DOWNLOAD_PATH);
     FileHash hash = FileHash_from_string(s_token);
     break_if_fail(hash != 0);
     //g_hash_table_lookup(server_ctx->jobs, &hash);
@@ -259,8 +278,8 @@ void Server_handle_info (
   g_variant_builder_add(&builder, "{sv}", "Jobs",
                         g_variant_new_int32(server_ctx->jobtable.max_njob));
   g_variant_builder_add(&builder, "{sv}", "Current-jobs",
-                        g_variant_new_int32(server_ctx->jobtable.npending +
-                                            server_ctx->jobtable.nrunning));
+                        g_variant_new_int32(server_ctx->jobtable.n_pending +
+                                            server_ctx->jobtable.n_running));
   soup_xmlrpc_message_set_response_e(msg, g_variant_builder_end(&builder));
 }
 

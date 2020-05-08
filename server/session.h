@@ -15,7 +15,7 @@
  * @memberof Session
  * @brief Session ID
  */
-typedef guint32 SessionID;
+typedef uint32_t SessionID;
 /**
  * @memberof Session
  * @static
@@ -34,7 +34,6 @@ typedef guint32 SessionID;
 inline bool SessionID_vaild (SessionID sid) {
   return sid != 0 && sid != SessionID__MAX;
 }
-
 
 
 /**
@@ -64,21 +63,14 @@ struct Session {
  *
  * @param session a Session
  */
-inline void Session_destroy (struct Session *session) {
-  RemoteFileIndex_destroy(&session->file_index);
-}
-
+void Session_destroy (void *session);
 /**
  * @memberof Session
  * @brief Frees a Session and associated resources.
  *
  * @param session a Session
  */
-inline void Session_free (struct Session *session) {
-  Session_destroy(session);
-  free(session);
-}
-
+void Session_free (void *session);
 /**
  * @memberof Session
  * @brief Initializes a Session with Session ID.
@@ -87,29 +79,33 @@ inline void Session_free (struct Session *session) {
  * @param sid Session ID
  * @return 0 if success, otherwize nonzero
  */
-inline int Session_init (struct Session *session, SessionID sid) {
-  session->sid = sid;
-  session->last_active = time(NULL);
-  RemoteFileIndex_init(&session->file_index);
-  return 0;
-}
+int Session_init (struct Session *session, SessionID sid);
 
 
 /**
  * @ingroup Server
- * @struct SessionTable
- * @extends GHashTable
+ * @brief Contains the information of all sessions.
+ *
+ * @sa Session
  */
+struct SessionTable {
+  /// Hash table mapping SessionID to Session.
+  GHashTable *table;
+  /// Lock for `table`.
+  GRWLock rwlock;
+};
 
 
 /**
  * @memberof SessionTable
- * @brief Cleans unused sessions.
+ * @brief Cleans inactive sessions.
  *
  * @param session_table a SessionTable
  * @param timeout time after which a session is considered unused
+ * @return the number of sessions removed
  */
-void SessionTable_clean_sessions (GHashTable *session_table, unsigned int timeout);
+unsigned int SessionTable_clean (
+  struct SessionTable *session_table, unsigned int timeout);
 /**
  * @memberof SessionTable
  * @brief Looks up a SessionID in a SessionTable.
@@ -121,24 +117,23 @@ void SessionTable_clean_sessions (GHashTable *session_table, unsigned int timeou
  * @param sid the SessionID to look up
  * @return the associated Session [transfer-none]
  */
-struct Session *SessionTable_get (GHashTable *session_table, SessionID sid);
+struct Session *SessionTable_get (
+  struct SessionTable *session_table, SessionID sid);
 /**
- * @fn void SessionTable_free (GHashTable *session_table)
  * @memberof SessionTable
- * @brief Frees a SessionTable and associated resources.
+ * @brief Frees associated resources of a SessionTable.
  *
  * @param session_table a SessionTable
  */
-#define SessionTable_free g_hash_table_destroy
+void SessionTable_destroy (struct SessionTable *session_table);
 /**
- * @fn void SessionTable_new ()
  * @memberof SessionTable
- * @brief Creates a new SessionTable.
+ * @brief Initializes a SessionTable.
  *
- * @return a new SessionTable
+ * @param session_table a SessionTable
+ * @return 0 if success, otherwize nonzero
  */
-#define SessionTable_new() \
-  g_hash_table_new_full(g_int_hash, g_int_equal, NULL, Session_free)
+int SessionTable_init (struct SessionTable *session_table);
 
 
 #endif /* DFCC_SERVER_SESSION_H */

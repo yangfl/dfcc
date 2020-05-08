@@ -60,7 +60,7 @@ inline void FileETag_destroy (struct FileETag *etag) {
  *
  * @param etag a FileETag
  */
-void FileETag_free (struct FileETag *etag);
+void FileETag_free (void *etag);
 /**
  * @memberof FileETag
  * @brief Initializes a FileETag with the stat buf `sb`.

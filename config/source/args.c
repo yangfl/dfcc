@@ -52,6 +52,7 @@ int Config_parse_args (struct Config *config, char *args[]) {
     {"foreground", 'f', 0, G_OPTION_ARG_NONE, &config->foreground, "Run the server in foreground", NULL},
     {"port", 'p', 0, G_OPTION_ARG_INT, &config->port, "Port to be listened", "N"},
     {"jobs", 'j', 0, G_OPTION_ARG_INT, &config->jobs, "Maximum jobs", "N"},
+    {"base_path", 0, 0, G_OPTION_ARG_STRING, &config->base_path, "Base path", "path"},
     {"housekeeping_interval", 0, 0, G_OPTION_ARG_INT, &config->housekeeping_interval, "Housekeeping interval", "s"},
     {"session_timeout", 0, 0, G_OPTION_ARG_INT, &config->session_timeout, "Session timeout", "s"},
     {"tls_cert_file", 0, 0, G_OPTION_ARG_STRING, &config->tls_cert_file, "TLS cert file", "cert"},

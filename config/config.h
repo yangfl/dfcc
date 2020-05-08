@@ -51,6 +51,8 @@ struct Config {
    * @sa ServerURL.baseurl
    */
   char *base_path;
+  /// length of Config.base_path
+  unsigned int base_path_len;
 
   /// Path to TLS certificate file. [optional]
   char *tls_cert_file;

@@ -11,24 +11,24 @@
 #include <glib/gstdio.h>
 
 
-void G_GNUC_PRINTF (4, 5) soup_xmlrpc_message_log_and_set_fault (
+void soup_xmlrpc_message_log_and_set_fault (
   SoupMessage *msg, GLogLevelFlags log_level,
-  int fault_code, const char *format, ...);
+  int fault_code, const char *format, ...) G_GNUC_PRINTF(4, 5) ;
 gboolean soup_xmlrpc_message_set_response_e (SoupMessage *msg, GVariant *value);
 GVariant *soup_xmlrpc_parse_response_e (
   SoupMessage *msg, const char *signature, GLogLevelFlags log_level);
 GVariant *soup_session_xmlrpc (
   SoupSession *session, const char *uri, const char *method_name,
-  GVariant *params, const char *signature);
+  GVariant *params, const char *signature, unsigned int *status);
 
-#define dfcc_session_xmlrpc_variant(session, uri, method, value) \
+#define dfcc_session_xmlrpc_variant(session, uri, method, status, value) \
   soup_session_xmlrpc( \
     (session), (uri), DFCC_RPC_ ## method ## _METHOD_NAME, (value), \
-    DFCC_RPC_ ## method ## _RESPONSE_SIGNATURE)
+    DFCC_RPC_ ## method ## _RESPONSE_SIGNATURE, status)
 
-#define dfcc_session_xmlrpc(session, uri, method, args...) \
+#define dfcc_session_xmlrpc(session, uri, method, status, args...) \
   dfcc_session_xmlrpc_variant( \
-    (session), (uri), method, \
+    (session), (uri), method, status, \
     g_variant_new(DFCC_RPC_ ## method ## _REQUEST_SIGNATURE, args))
 
 #define return_if_g_variant_not_type(v, s) \

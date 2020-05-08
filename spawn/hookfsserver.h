@@ -1,26 +1,28 @@
 #ifndef DFCC_SPAWN_HOOKFS_SERVER_H
 #define DFCC_SPAWN_HOOKFS_SERVER_H
 
+#include <stdbool.h>
+
 #include <gio/gio.h>
 
 
 //! @memberof HookFsServer
-#define HOOKFS_PULL (0u)
+#define HOOKFS_READ (0u)
 //! @memberof HookFsServer
-#define HOOKFS_PUSH (1u)
+#define HOOKFS_WRITE (1u)
 
 
 //! @memberof HookFsServer
 typedef unsigned long long HookFsID;
 //! @memberof HookFsServer
-typedef const char *(*HookFsServer__FileTranslator) (
-  HookFsID id, const char *path, int mode);
+typedef char *(*HookFsServerFileTranslator) (
+  HookFsID, const char *, bool, int);
 
 
 //! @ingroup Spawn
 struct HookFsServer {
   GSocketService *service;
-  HookFsServer__FileTranslator translator;
+  HookFsServerFileTranslator translator;
   char *path;
 };
 
@@ -30,7 +32,7 @@ void HookFsServer_destroy (struct HookFsServer *server);
 //! @memberof HookFsServer
 int HookFsServer_init (
     struct HookFsServer *server, const char *path,
-    HookFsServer__FileTranslator translator, GError **error);
+    HookFsServerFileTranslator translator, GError **error);
 
 
 #endif /* DFCC_SPAWN_HOOKFS_SERVER_H */

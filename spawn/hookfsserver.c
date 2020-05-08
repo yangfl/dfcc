@@ -86,7 +86,7 @@ struct HookFsServerConnection {
 };
 
 
-void HookFsServerConnection_message_ready (
+static void HookFsServerConnection_message_receive_cb (
     GObject *source_object, GAsyncResult *res, gpointer user_data) {
   GInputStream *istream = G_INPUT_STREAM(source_object);
   struct HookFsServerConnection *conn = user_data;
@@ -146,7 +146,7 @@ next:
   // schedule next read
   g_input_stream_read_async(
     istream, conn->message, sizeof(conn->message),
-    G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_ready, conn);
+    G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_receive_cb, conn);
   return;
 
 close:
@@ -171,14 +171,14 @@ gboolean HookFsServer_incoming_callback (
 
   g_input_stream_read_async(
     istream, conn->message, sizeof(conn->message),
-    G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_ready, conn);
+    G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_receive_cb, conn);
   return FALSE;
 }
 
 
 int HookFsServer_init (
     struct HookFsServer *server, const char *path,
-    HookFsServer__FileTranslator translator, GError **error) {
+    HookFsServerFileTranslator translator, GError **error) {
   int ret = 0;
 
   server->path = g_strdup_printf(path, getpid());

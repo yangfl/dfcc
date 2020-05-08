@@ -12,7 +12,6 @@
 #include <wrapper/mappedfile.h>
 #include <wrapper/soup.h>
 
-#include "../ccargs/ccargs.h"
 #include "../config/config.h"
 #include "../config/serverurl.h"
 #include "../file/hash.h"
@@ -93,7 +92,7 @@ static SoupMessage *RemoteConnection_try_submit (
   soup_uri_free(hosturi);
 
   guint status_ = soup_session_send_message(conn->session, msg);
-  if (status_ < 100 || status_ >= 400) {
+  if (!SOUP_STATUS_IS_SUCCESSFUL(status_)) {
     // fail, cleanup
     soup_uri_free(baseuri);
   } else {
@@ -117,13 +116,12 @@ static SoupMessage *RemoteConnection_try_submit (
 //! @memberof RemoteConnection
 static void RemoteConnection_destroy (struct RemoteConnection *conn) {
   RemoteConnection_cleanuri(conn);
-
   g_object_unref(conn->session);
 }
 
 
 //! @memberof RemoteConnection
-static int RemoteConnection_init (struct RemoteConnection *conn) {
+static int RemoteConnection_init (struct RemoteConnection *conn, bool debug) {
   // setup cookie and session
   conn->cookiejar = soup_cookie_jar_new();
   conn->session = soup_session_new_with_options(
@@ -133,10 +131,12 @@ static int RemoteConnection_init (struct RemoteConnection *conn) {
     NULL);
   g_object_unref(conn->cookiejar);
 
-  // setup logger
-  SoupLogger *logger = soup_logger_new(SOUP_LOGGER_LOG_BODY, -1);
-  soup_session_add_feature(conn->session, SOUP_SESSION_FEATURE(logger));
-  g_object_unref(logger);
+  if (debug) {
+    // setup logger
+    SoupLogger *logger = soup_logger_new(SOUP_LOGGER_LOG_BODY, -1);
+    soup_session_add_feature(conn->session, SOUP_SESSION_FEATURE(logger));
+    g_object_unref(logger);
+  }
 
   // conn->sessionid_cookies = DFCC_COOKIES_SID + buf2hex(sessionid);
   SessionID sessionid = Client__get_session_id();
@@ -219,7 +219,7 @@ static int Client_try_submit (
     SoupMessage *msg = RemoteConnection_try_submit(
       conn, server_list + i, xmlrpc_msg, xmlrpc_msg_len, &status);
 
-    if (status < 100 || status >= 400) {
+    if (!SOUP_STATUS_IS_SUCCESSFUL(status)) {
       if (status == SOUP_STATUS_SERVICE_UNAVAILABLE) {
         g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
               "Server %s full", server_list[i].baseurl);
@@ -253,8 +253,9 @@ static int Client_try_submit (
 
 static GVariant *Client_query_job (
     struct RemoteConnection *conn, gboolean *finished, GVariant **filelist) {
+  unsigned int status;
   GVariant *response = dfcc_session_xmlrpc(
-    conn->session, conn->rpcurl, QUERY, conn->jid, FALSE);
+    conn->session, conn->rpcurl, QUERY, &status, conn->jid, FALSE);
   return_if_fail(response != NULL) NULL;
   g_variant_get(response, DFCC_RPC_QUERY_RESPONSE_SIGNATURE,
                 finished, filelist);
@@ -264,8 +265,9 @@ static GVariant *Client_query_job (
 
 static int Client_file_associate (
     struct RemoteConnection *conn, GVariant *filelist) {
+  unsigned int status;
   GVariant *response = dfcc_session_xmlrpc_variant(
-    conn->session, conn->rpcurl, ASSOCIATE, filelist);
+    conn->session, conn->rpcurl, ASSOCIATE, &status, filelist);
   return_if_fail(response != NULL) 1;
   g_variant_unref(response);
   return 0;
@@ -457,12 +459,12 @@ static int Client_remote_finish (
 }
 
 
-static int Client_run_remotely_ (
+int Client_run_remotely (
     const struct Config *config, struct Result * restrict result,
     char * const remote_argv[], char * const remote_envp[]) {
   int ret = 0;
   struct RemoteConnection conn;
-  RemoteConnection_init(&conn);
+  RemoteConnection_init(&conn, config->debug);
 
   if unlikely (Client_try_submit(
       &conn, config->server_list, remote_argv, remote_envp,
@@ -494,19 +496,5 @@ static int Client_run_remotely_ (
   }
 
   RemoteConnection_destroy(&conn);
-  return ret;
-}
-
-
-int Client_run_remotely (
-    struct Config *config, struct Result * restrict result) {
-  char **remote_argv = g_strdupv(config->cc_argv);
-  char **remote_envp = g_strdupv(config->cc_envp);
-  int ret = 1;
-  if likely (CCargs_can_run_remotely(&remote_argv, &remote_envp)) {
-    ret = Client_run_remotely_(config, result, remote_argv, remote_envp);
-  }
-  g_strfreev(remote_argv);
-  g_strfreev(remote_envp);
   return ret;
 }

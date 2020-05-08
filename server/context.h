@@ -21,12 +21,9 @@ struct ServerContext {
 
   /// Config for the server
   struct Config *config;
-  /// length of Config.base_path
-  unsigned int base_path_len;
 
   struct Cache cache;
-  GHashTable *sessions;
-  GRWLock sessions_rwlock;
+  struct SessionTable session_table;
   struct JobTable jobtable;
 };
 

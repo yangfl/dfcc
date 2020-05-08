@@ -3,33 +3,31 @@
 
 #include <gmodule.h>
 
-#include "entry.h"
 
+//! @ingroup File
+struct LocalFileIndex {
+  GHashTable *table;
+};
 
-/**
- * @ingroup File
- * @struct LocalFileIndex
- * @extends GHashTable
- */
 
 //! @memberof LocalFileIndex
 struct FileEntryE *LocalFileIndex_get (
     GHashTable *index, const char* path, GError **error);
-
 /**
- * @fn void LocalFileIndex_free (GHashTable *index)
  * @memberof LocalFileIndex
- * @brief Frees a LocalFileIndex and associated resources.
+ * @brief Frees associated resources of a LocalFileIndex.
  *
  * @param index a LocalFileIndex
  */
-#define LocalFileIndex_free g_hash_table_destroy
+void LocalFileIndex_destroy (struct LocalFileIndex *index);
 /**
  * @memberof LocalFileIndex
- * @brief Create a new LocalFileIndex.
+ * @brief Initializes a LocalFileIndex.
  *
- * @return a new LocalFileIndex
+ * @param index a LocalFileIndex
+ * @return 0 if success, otherwize nonzero
  */
-#define LocalFileIndex_new() g_hash_table_new_full(g_str_hash, g_str_equal, NULL, FileTag_free)
+int LocalFileIndex_init (struct LocalFileIndex *index);
+
 
 #endif /* DFCC_FILE_LOCAL_INDEX_H */

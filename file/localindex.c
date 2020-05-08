@@ -10,7 +10,7 @@
 struct FileEntryE *LocalFileIndex_get (
     GHashTable *index, const char* path, GError **error) {
   GStatBuf sb;
-  should (g_stat_e(path, &sb, error)) otherwise return NULL;
+  return_if_fail(g_stat_e(path, &sb, error) == 0) NULL;
 
   char *absolute_path = g_canonicalize_filename(path, NULL);
   struct FileEntryE *entrye = g_hash_table_lookup(index, absolute_path);
@@ -40,4 +40,16 @@ struct FileEntryE *LocalFileIndex_get (
 
   g_hash_table_insert(index, entrye->path, entrye);
   return entrye;
+}
+
+
+void LocalFileIndex_destroy (struct LocalFileIndex *index) {
+  g_hash_table_destroy(index->table);
+}
+
+
+int LocalFileIndex_init (struct LocalFileIndex *index) {
+  index->table = g_hash_table_new_full(
+    g_str_hash, g_str_equal, NULL, FileETag_free);
+  return 0;
 }

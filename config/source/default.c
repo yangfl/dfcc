@@ -59,6 +59,9 @@ static int Config_fill_default_server (struct Config *config) {
   if (config->base_path == NULL) {
     config->base_path = g_strdup("");
   }
+  if (config->base_path_len == 0) {
+    config->base_path_len = strlen(config->base_path);
+  }
 
   int nprocs_conf = sysconf(_SC_NPROCESSORS_CONF);
   if (config->nprocs_conf == 0 || config->nprocs_conf > nprocs_conf) {
@@ -72,6 +75,7 @@ static int Config_fill_default_server (struct Config *config) {
     config->jobs = config->nprocs_onln;
   }
   if (config->housekeeping_interval == 0) {
+    // TEMP: 5 min
     config->housekeeping_interval = 60 * 1;
   }
   if (config->session_timeout == 0) {

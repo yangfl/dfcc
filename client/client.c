@@ -1,5 +1,7 @@
 #include <macro.h>
 
+#include "../ccargs/ccargs.h"
+#include "../version.h"
 #include "prepost.h"
 #include "local.h"
 #include "remote.h"
@@ -10,11 +12,21 @@ int Client_start (struct Config *config) {
   return_if(Client_pre(config) == 0) 0;
 
   struct Result result = {0};
-  int ret;
+  int ret = 1;
 
-  if (Client_run_remotely(config, &result) == 0) {
-    ret = 0;
-  } else {
+  char **remote_argv = g_strdupv(config->cc_argv);
+  char **remote_envp = g_strdupv(config->cc_envp);
+  if likely (CCargs_can_run_remotely(&remote_argv, &remote_envp)) {
+    if (Client_run_remotely(config, &result, remote_argv, remote_envp) == 0) {
+      ret = 0;
+    } else {
+      g_log(DFCC_NAME, G_LOG_LEVEL_WARNING, "Remote compile failed, fallback to local");
+    }
+  }
+  g_strfreev(remote_argv);
+  g_strfreev(remote_envp);
+
+  if (ret != 0) {
     ret = Client_run_locally(config, &result);
   }
 

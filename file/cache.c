@@ -175,9 +175,9 @@ bool Cache_verify (
 
     if (!entry_valid) {
       // invalid entry, delete
-      g_rw_lock_writer_lock(&cache->index_rwlock);
+      g_rw_lock_writer_lock(&cache->rwlock);
       g_hash_table_remove(cache->index, &entrye->hash);
-      g_rw_lock_writer_unlock(&cache->index_rwlock);
+      g_rw_lock_writer_unlock(&cache->rwlock);
 
       if (entry_is_cache) {
         // invalid cache file, delete
@@ -206,7 +206,7 @@ static struct FileEntryE *Cache_index (
   CacheEntry_init(entrye, path, sb, hash);
 
   GRWLockWriterLocker *locker =
-    g_rw_lock_writer_locker_new(&cache->index_rwlock);
+    g_rw_lock_writer_locker_new(&cache->rwlock);
   g_hash_table_insert(cache->index, &entrye->hash, entrye);
   g_rw_lock_writer_locker_free(locker);
 
@@ -255,7 +255,7 @@ struct FileEntryE *Cache_try_get (
     struct Cache *cache, FileHash hash, GError **error) {
   // find an existing one
   GRWLockReaderLocker *locker =
-    g_rw_lock_reader_locker_new(&cache->index_rwlock);
+    g_rw_lock_reader_locker_new(&cache->rwlock);
   struct CacheEntry *entrye = g_hash_table_lookup(cache->index, &hash);
   if (entrye != NULL) {
     g_atomic_ref_count_inc(&entrye->arc);
@@ -385,7 +385,7 @@ struct FileEntryE *Cache_index_path (
 
 void Cache_destroy (struct Cache *cache) {
   g_hash_table_destroy(cache->index);
-  g_rw_lock_clear(&cache->index_rwlock);
+  g_rw_lock_clear(&cache->rwlock);
   Broadcast_destroy(&cache->sta);
   g_free(cache->cache_dir);
 }
@@ -398,7 +398,7 @@ int Cache_init (struct Cache *cache, char *cache_dir, bool no_verify_cache) {
   should (ret == 0) otherwise return ret;
   cache->index =
     g_hash_table_new_full(FileHash_hash, FileHash_equal, NULL, NULL);
-  g_rw_lock_init(&cache->index_rwlock);
+  g_rw_lock_init(&cache->rwlock);
   cache->cache_dir = cache_dir;
   cache->cache_dir_len = strlen(cache_dir);
   cache->no_verify_cache = no_verify_cache;

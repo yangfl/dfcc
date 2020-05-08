@@ -34,7 +34,7 @@
 static inline bool Server_is_path_proper (
     struct ServerContext *server_ctx,
     const char *path, unsigned int prefix_len) {
-  path += server_ctx->base_path_len + prefix_len;
+  path += server_ctx->config->base_path_len + prefix_len;
   if (path[0] == '/') {
     path++;
   }
@@ -53,7 +53,7 @@ static inline bool Server_is_path_proper (
 struct ServerCallbackContext {
   /// The ServerContext.
   struct ServerContext *server_ctx;
-  /// One of the handlers in @ref ServerHandler.
+  /// One of the handlers in ServerHandler.
   void (*handler) (
     struct ServerContext *, struct Session *, const char *, SoupMessage *);
   /**
@@ -122,7 +122,8 @@ static void Server_handle (
     // send request to the real handler
     server_cb_ctx->handler(
       server_cb_ctx->server_ctx,
-      SessionTable_get(server_cb_ctx->server_ctx->sessions, sid), path, msg);
+      SessionTable_get(&server_cb_ctx->server_ctx->session_table, sid),
+                       path, msg);
   }
   Server_Debug_request_response(msg, path);
 }
@@ -188,15 +189,15 @@ int Server_start (struct Config *config) {
   soup_server_add_handler(server, config->base_path, Server_handle,
                           &server_cb_ctx_homepage, NULL);
 
-  char register_path[server_ctx.base_path_len +
+  char register_path[server_ctx.config->base_path_len +
                      MAX(
                       MAX(strlen(DFCC_RPC_PATH), strlen(DFCC_UPLOAD_PATH)),
                       MAX(strlen(DFCC_DOWNLOAD_PATH), strlen(DFCC_INFO_PATH))
                      ) + 1];
-  memcpy(register_path, config->base_path, server_ctx.base_path_len);
+  memcpy(register_path, config->base_path, server_ctx.config->base_path_len);
 
 #define register_router(prefix, prefix_len_, sid_required_, handler_) \
-  memcpy(register_path + server_ctx.base_path_len, prefix, \
+  memcpy(register_path + server_ctx.config->base_path_len, prefix, \
          strlen(prefix) + 1); \
   struct ServerCallbackContext server_cb_ctx_ ## prefix = { \
     .server_ctx = &server_ctx, \

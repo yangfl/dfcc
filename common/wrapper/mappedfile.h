@@ -19,6 +19,8 @@ struct MappedFile {
 //! @memberof MappedFile
 void MappedFile_destroy (struct MappedFile *m);
 //! @memberof MappedFile
+int MappedFile_init_from_fd (struct MappedFile *m, int fd, GError **error);
+//! @memberof MappedFile
 int MappedFile_init (struct MappedFile *m, const char *path, GError **error);
 
 

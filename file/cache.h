@@ -31,8 +31,6 @@ struct CacheEntry;
  * @brief Contains the information of the cache storage.
  */
 struct Cache {
-  // hash -> FileEntryE
-  // relative path to cache_dir
   /**
    * @brief Hash table from file path to CacheEntry
    *
@@ -42,7 +40,7 @@ struct Cache {
    */
   GHashTable *index;
   /// Lock for Cache.index.
-  GRWLock index_rwlock;
+  GRWLock rwlock;
 
   struct Broadcast sta;
 

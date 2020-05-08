@@ -17,22 +17,35 @@ static void __attribute__ ((constructor)) DFCC_SPAWN_ERROR_init (void) {
 }
 
 
-extern inline void Subprocess_destroy (struct Subprocess *spawn);
-
-
 static void Subprocess_child_watch_cb (GPid pid, gint status, gpointer user_data) {
-  struct Subprocess *spawn = (struct Subprocess *) user_data;
-  spawn->stopped = true;
-  if (g_spawn_check_exit_status(status, &spawn->error)) {
+  struct Subprocess *p = (struct Subprocess *) user_data;
+
+  p->stopped = true;
+
+  if (g_spawn_check_exit_status(status, &p->error)) {
     g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
           "Child %" G_PID_FORMAT " exited normally", pid);
   } else {
     g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG,
           "Child %" G_PID_FORMAT " exited abnormally: %s",
-          pid, spawn->error->message);
+          pid, p->error->message);
   }
-  if (spawn->onfinish != NULL) {
-    spawn->onfinish(spawn, spawn->userdata);
+
+  if (p->onexit != NULL) {
+    p->onexit(p, p->onexit_userdata);
+  }
+}
+
+
+void Subprocess_destroy (struct Subprocess *p) {
+  if (!p->stopped) {
+    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+          "Destroy Subprocess structure while child %" G_PID_FORMAT
+          " has not stopped", p->pid);
+  }
+  g_spawn_close_pid(p->pid);
+  if (p->error != NULL) {
+    g_error_free(p->error);
   }
 }
 
@@ -98,18 +111,15 @@ static char *Subprocess__search_executable (
 
 
 int Subprocess_init (
-    struct Subprocess *p, gchar **argv, gchar **envp,
-    const char *selfpath, GError **error) {
-  GSpawnFlags search_path = selfpath == NULL ? G_SPAWN_SEARCH_PATH : 0;
-  gchar **argv_searched;
-  if (selfpath == NULL) {
-    argv_searched = argv;
-  } else {
-    argv_searched =
-      g_memdup(argv, (g_strv_length(argv) + 1) * sizeof(gchar *));
-    argv_searched[0] = Subprocess__search_executable(argv[0], selfpath, error);
-    should (argv_searched[0] != NULL) otherwise {
-      g_free(argv_searched);
+    struct Subprocess *p, gchar **argv, gchar **envp, const char *selfpath,
+    SubprocessExitCallback onexit, void *onexit_userdata, GError **error) {
+  bool free_argv = false;
+  if (selfpath != NULL && strchr(argv[0], '/') == NULL) {
+    free_argv = true;
+    argv = g_memdup(argv, (g_strv_length(argv) + 1) * sizeof(gchar *));
+    argv[0] = Subprocess__search_executable(argv[0], selfpath, error);
+    should (argv[0] != NULL) otherwise {
+      g_free(argv);
       return 128;
     }
   }
@@ -119,12 +129,13 @@ int Subprocess_init (
   int exit_status = 0;
 
   do_once {
+    GSpawnFlags search_path = selfpath == NULL ? G_SPAWN_SEARCH_PATH : 0;
     // Spawn child process.
     if (p == NULL) {
       should (g_spawn_sync(
-          NULL, argv_searched, envp_protected, search_path |
-          G_SPAWN_LEAVE_DESCRIPTORS_OPEN, NULL, NULL,
-          NULL, NULL, &exit_status, error)) otherwise {
+          NULL, argv, envp_protected,
+          search_path | G_SPAWN_LEAVE_DESCRIPTORS_OPEN,
+          NULL, NULL, NULL, NULL, &exit_status, error)) otherwise {
         exit_status = 255;
         break;
       }
@@ -137,26 +148,28 @@ int Subprocess_init (
       }
     } else {
       should (g_spawn_async_with_pipes(
-          NULL, argv_searched, envp_protected, search_path |
-          G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_LEAVE_DESCRIPTORS_OPEN, NULL, NULL,
-          &p->pid, &p->stdin, &p->stdout, &p->stderr, error)
+          NULL, argv, envp_protected,
+          search_path | G_SPAWN_DO_NOT_REAP_CHILD |
+            G_SPAWN_LEAVE_DESCRIPTORS_OPEN,
+          NULL, NULL, &p->pid, &p->stdin, &p->stdout, &p->stderr, error)
       ) otherwise {
         exit_status = 255;
         break;
       }
 
-      g_child_watch_add(p->pid, Subprocess_child_watch_cb, p);
       p->stopped = false;
       p->error = NULL;
-      p->onfinish = NULL;
-      p->userdata = NULL;
+      p->onexit = onexit;
+      p->onexit_userdata = onexit_userdata;
+
+      g_child_watch_add(p->pid, Subprocess_child_watch_cb, p);
     }
   }
 
   g_strfreev(envp_protected);
-  if (selfpath != NULL) {
-    g_free(argv_searched[0]);
-    g_free(argv_searched);
+  if (free_argv) {
+    g_free(argv[0]);
+    g_free(argv);
   }
 
   return exit_status;

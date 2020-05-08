@@ -83,17 +83,6 @@ gboolean HookedSubprocess_run (struct HookedSubprocess *p, GError **error) {
 void HookedSubprocess_destroy (struct HookedSubprocess *p) {
   Subprocess_destroy((struct Subprocess *) p);
 
-  g_string_free(p->stdout_buf, FALSE);
-  switch (p->pending_type) {
-    case HOOKED_PENDING_PATH_HASH:
-      break;
-    case HOOKED_PENDING_HASH_FILE:
-      g_free(p->pending_path);
-      break;
-    default:
-      break;
-  }
-
   g_hash_table_destroy(p->outputs);
 }
 
@@ -106,13 +95,9 @@ int HookedSubprocess_init (
   gchar **envp_hooked =
     g_environ_setenv(g_strdupv(envp), "LD_PRELOADa", hookfs, TRUE);
   int ret = Subprocess_init(
-    (struct Subprocess *) p, argv, envp_hooked, selfpath, error);
+    (struct Subprocess *) p, argv, envp_hooked, selfpath, NULL, NULL, error);
   g_strfreev(envp_hooked);
   should (ret == 0) otherwise return ret;
-
-  p->stdout_buf = g_string_new(NULL);
-
-  p->pending_type = HOOKED_PENDING_NONE;
 
   p->index = index;
   p->cache = cache;

@@ -21,7 +21,7 @@ bool FileETag_isvalid_path (
 }
 
 
-void FileETag_free (struct FileETag *etag) {
+void FileETag_free (void *etag) {
   FileETag_destroy(etag);
   g_free(etag);
 }

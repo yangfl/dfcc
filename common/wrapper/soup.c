@@ -9,7 +9,7 @@
 #include "soup.h"
 
 
-void G_GNUC_PRINTF (4, 5) soup_xmlrpc_message_log_and_set_fault (
+void soup_xmlrpc_message_log_and_set_fault (
     SoupMessage *msg, GLogLevelFlags log_level,
     int fault_code, const char *format, ...) {
   va_list args;
@@ -29,7 +29,7 @@ gboolean soup_xmlrpc_message_set_response_e (
   gboolean ret = soup_xmlrpc_message_set_response(msg, value, &error);
   should (ret) otherwise {
     soup_xmlrpc_message_log_and_set_fault(
-      msg, G_LOG_LEVEL_WARNING, 1,
+      msg, G_LOG_LEVEL_CRITICAL, 1,
       "Error when responsing XML RPC request: %s", error->message);
     g_error_free(error);
   }
@@ -59,7 +59,7 @@ GVariant *soup_xmlrpc_parse_response_e (
 
 GVariant *soup_session_xmlrpc (
     SoupSession *session, const char *uri, const char *method_name,
-    GVariant *params, const char *signature) {
+    GVariant *params, const char *signature, unsigned int *status) {
   GError *error = NULL;
   SoupMessage *msg = soup_xmlrpc_message_new(uri, method_name, params, &error);
   should (msg != NULL) otherwise {
@@ -70,7 +70,16 @@ GVariant *soup_session_xmlrpc (
     return NULL;
   }
 
-  soup_session_send_message(session, msg);
+  unsigned int status_ = soup_session_send_message(session, msg);
+  if (status != NULL) {
+    *status = status_;
+  }
+  should (SOUP_STATUS_IS_SUCCESSFUL(status_)) otherwise {
+    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING,
+          "Failed to perform RPC request: %s", msg->reason_phrase);
+    g_object_unref(msg);
+    return NULL;
+  }
 
   GVariant *response = soup_xmlrpc_parse_response_e(
     msg, signature, G_LOG_LEVEL_WARNING);

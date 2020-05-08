@@ -18,20 +18,25 @@ gboolean ServerContext__housekeep (gpointer user_data) {
 
   g_log(DFCC_NAME, G_LOG_LEVEL_DEBUG, "Do housekeep");
 
-  g_rw_lock_writer_lock(&server_housekeeping_ctx->server_ctx->sessions_rwlock);
-  SessionTable_clean_sessions(
-    server_housekeeping_ctx->server_ctx->sessions,
+  g_rw_lock_writer_lock(&server_housekeeping_ctx->server_ctx->session_table.rwlock);
+  unsigned int n_session_removed = SessionTable_clean(
+    &server_housekeeping_ctx->server_ctx->session_table,
     server_housekeeping_ctx->session_timeout);
   g_rw_lock_writer_unlock(
-    &server_housekeeping_ctx->server_ctx->sessions_rwlock);
+    &server_housekeeping_ctx->server_ctx->session_table.rwlock);
+
+  if (n_session_removed > 0) {
+    JobTable_clean(&server_housekeeping_ctx->server_ctx->jobtable,
+                   &server_housekeeping_ctx->server_ctx->session_table);
+  }
+
   return G_SOURCE_CONTINUE;
 }
 
 
 void ServerContext_destroy (struct ServerContext *server_ctx) {
   Cache_destroy(&server_ctx->cache);
-  g_hash_table_destroy(server_ctx->sessions);
-  g_rw_lock_clear(&server_ctx->sessions_rwlock);
+  SessionTable_destroy(&server_ctx->session_table);
   JobTable_destroy(&server_ctx->jobtable);
 }
 
@@ -41,13 +46,11 @@ int ServerContext_init (struct ServerContext *server_ctx,
   server_ctx->server = server;
 
   server_ctx->config = config;
-  server_ctx->base_path_len = strlen(config->base_path);
+  server_ctx->config->base_path_len = strlen(config->base_path);
 
   Cache_init(
     &server_ctx->cache, g_strdup(config->cache_dir), config->no_verify_cache);
-  server_ctx->sessions = g_hash_table_new_full(g_int_hash, g_int_equal, NULL,
-                                               (void (*)(void *)) Session_free);
-  g_rw_lock_init(&server_ctx->sessions_rwlock);
+  SessionTable_init(&server_ctx->session_table);
   JobTable_init(&server_ctx->jobtable, config->jobs);
 
   return 0;
