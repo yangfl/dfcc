@@ -2,8 +2,7 @@
 
 #include <gmodule.h>
 
-#include "../file/remoteindex.h"
-
+#include "file/remoteindex.h"
 #include "session.h"
 
 

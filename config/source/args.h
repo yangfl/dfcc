@@ -1,7 +1,7 @@
 #ifndef DFCC_CONFIG_ARGS_H
 #define DFCC_CONFIG_ARGS_H
 
-#include "../config.h"
+#include "config/config.h"
 
 
 /**

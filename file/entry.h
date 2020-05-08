@@ -5,8 +5,8 @@
 
 #include <glib.h>
 
-#include "etag.h"
-#include "hash.h"
+#include "file/etag.h"
+#include "file/hash.h"
 
 
 /**

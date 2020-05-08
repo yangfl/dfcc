@@ -4,13 +4,12 @@
 #include <glib.h>
 #include <whereami.h>
 
-#include <macro.h>
-
+#include "common/macro.h"
 #include "source/args.h"
 #include "source/conffile.h"
 #include "source/default.h"
 #include "source/mux.h"
-#include "serverurl.h"
+#include "config/serverurl.h"
 #include "config.h"
 
 

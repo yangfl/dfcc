@@ -6,10 +6,9 @@
  * @{
  */
 
-#include <structinfo.h>
-
-#include "../config/config.h"
-#include "../file/hash.h"
+#include "common/structinfo.h"
+#include "config/config.h"
+#include "file/hash.h"
 
 
 struct Result {

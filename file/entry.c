@@ -2,10 +2,9 @@
 
 #include <glib.h>
 
-#include <macro.h>
-
-#include "etag.h"
-#include "hash.h"
+#include "common/macro.h"
+#include "file/etag.h"
+#include "file/hash.h"
 #include "entry.h"
 
 

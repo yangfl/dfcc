@@ -3,11 +3,11 @@
 
 #include <glib.h>
 
-#include "../file/cache.h"
-#include "../file/hash.h"
-#include "../file/remoteindex.h"
-#include "hookfsserver.h"
-#include "subprocess.h"
+#include "file/cache.h"
+#include "file/hash.h"
+#include "file/remoteindex.h"
+#include "spawn/hookfsserver.h"
+#include "spawn/subprocess.h"
 
 
 /**

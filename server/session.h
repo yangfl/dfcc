@@ -6,9 +6,7 @@
 #include <glib.h>
 #include <gmodule.h>
 
-#include <class.h>
-
-#include "../file/remoteindex.h"
+#include "file/remoteindex.h"
 
 
 /**
@@ -43,17 +41,16 @@ inline bool SessionID_vaild (SessionID sid) {
 struct Session {
   /// Unique ID for this session.
   SessionID sid;
-
   /** @brief Reference counter giving the number of connections
    *         currently using this session.
    */
   unsigned int rc;
-
   /// Time when this session was last active.
   time_t last_active;
-
   /// Files of the remote client.
   struct RemoteFileIndex file_index;
+  /// Compiler jobs.
+  //struct JobTable jobtable;
 };
 
 

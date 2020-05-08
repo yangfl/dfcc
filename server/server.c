@@ -1,26 +1,25 @@
+/**
+ * @addtogroup Server
+ * @{
+ */
+
 #include <stdbool.h>
 #include <stdint.h>
 
 #include <libsoup/soup.h>
 #include <glib/gstdio.h>
 
-#include <macro.h>
-#include <morestring.h>
-#include <wrapper/soup.h>
-
-#include "../config/config.h"
-#include "protocol.h"
-#include "../version.h"
-#include "context.h"
-#include "debug.h"
-#include "handler.h"
-#include "session.h"
+#include "common/macro.h"
+#include "common/morestring.h"
+#include "common/wrapper/soup.h"
+#include "config/config.h"
+#include "server/protocol.h"
+#include "./version.h"
+#include "server/context.h"
+#include "server/debug.h"
+#include "server/handler.h"
+#include "server/session.h"
 #include "server.h"
-
-/**
- * @addtogroup Server
- * @{
- */
 
 
 /**

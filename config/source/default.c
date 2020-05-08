@@ -3,9 +3,9 @@
 
 #include <glib.h>
 
-#include "../../version.h"
-#include "../config.h"
-#include "../server/protocol.h"
+#include "./version.h"
+#include "config/config.h"
+#include "server/protocol.h"
 #include "default.h"
 
 

@@ -4,8 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <macro.h>
-
+#include "common/macro.h"
 #include "simpleiostream.h"
 
 

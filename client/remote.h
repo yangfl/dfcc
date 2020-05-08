@@ -5,8 +5,8 @@
  * @{
  */
 
-#include "../config/config.h"
-#include "prepost.h"
+#include "config/config.h"
+#include "client/prepost.h"
 
 
 /**

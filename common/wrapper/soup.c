@@ -3,9 +3,8 @@
 #include <libsoup/soup.h>
 #include <glib/gstdio.h>
 
-#include <macro.h>
-
-#include "../../version.h"
+#include "common/macro.h"
+#include "./version.h"
 #include "soup.h"
 
 

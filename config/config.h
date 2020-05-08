@@ -6,9 +6,8 @@
 
 #include <stdbool.h>
 
-#include <structinfo.h>
-
-#include "serverurl.h"
+#include "common/structinfo.h"
+#include "config/serverurl.h"
 
 
 /**

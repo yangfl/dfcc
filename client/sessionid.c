@@ -2,9 +2,8 @@
 
 #include <glib.h>
 
-#include <macro.h>
-
-#include "../version.h"
+#include "common/macro.h"
+#include "./version.h"
 #include "sessionid.h"
 
 

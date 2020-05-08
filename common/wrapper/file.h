@@ -12,7 +12,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
-#include <macro.h>
+#include "common/macro.h"
 
 
 void file_io_set_error (GError **error, const char *format);

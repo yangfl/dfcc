@@ -11,8 +11,8 @@
 #include <libsoup/soup.h>
 #include <glib/gstdio.h>
 
-#include "context.h"
-#include "session.h"
+#include "server/context.h"
+#include "server/session.h"
 
 
 /**

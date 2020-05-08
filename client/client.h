@@ -5,7 +5,7 @@
  * @{
  */
 
-#include "../config/config.h"
+#include "config/config.h"
 
 
 /**

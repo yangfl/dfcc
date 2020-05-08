@@ -1,8 +1,8 @@
 #ifndef DFCC_CLIENT_LOCAL_H
 #define DFCC_CLIENT_LOCAL_H
 
-#include "../config/config.h"
-#include "prepost.h"
+#include "config/config.h"
+#include "client/prepost.h"
 
 
 /**

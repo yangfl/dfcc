@@ -1,7 +1,7 @@
 #ifndef DFCC_CONFIG_MUX_H
 #define DFCC_CONFIG_MUX_H
 
-#include "../config.h"
+#include "config/config.h"
 
 
 /**

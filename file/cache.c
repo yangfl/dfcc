@@ -3,13 +3,12 @@
 
 #include <gmodule.h>
 
-#include <broadcast.h>
-#include <hexstring.h>
-#include <macro.h>
-#include <wrapper/file.h>
-
-#include "../version.h"
-#include "entry.h"
+#include "common/broadcast.h"
+#include "common/hexstring.h"
+#include "common/macro.h"
+#include "common/wrapper/file.h"
+#include "./version.h"
+#include "file/entry.h"
 #include "cache.h"
 
 

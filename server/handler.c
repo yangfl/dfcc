@@ -1,25 +1,24 @@
+/**
+ * @addtogroup ServerHandler
+ * @{
+ */
+
 #include <stdbool.h>
 
 #include <libsoup/soup.h>
 #include <glib/gstdio.h>
 
-#include <macro.h>
-#include <wrapper/soup.h>
-
-#include "../config/config.h"
-#include "../file/entry.h"
-#include "../file/remoteindex.h"
-#include "protocol.h"
-#include "../version.h"
-#include "context.h"
-#include "debug.h"
-#include "job.h"
+#include "common/macro.h"
+#include "common/wrapper/soup.h"
+#include "config/config.h"
+#include "file/entry.h"
+#include "file/remoteindex.h"
+#include "server/protocol.h"
+#include "./version.h"
+#include "server/context.h"
+#include "server/debug.h"
+#include "server/job.h"
 #include "session.h"
-
-/**
- * @addtogroup ServerHandler
- * @{
- */
 
 
 /**

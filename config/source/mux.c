@@ -1,8 +1,7 @@
 #include <glib.h>
 
-#include <macro.h>
-
-#include "../config.h"
+#include "common/macro.h"
+#include "config/config.h"
 #include "mux.h"
 
 

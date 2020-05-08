@@ -1,7 +1,7 @@
 #ifndef DFCC_CONFIG_CONFFILE_H
 #define DFCC_CONFIG_CONFFILE_H
 
-#include "../config.h"
+#include "config/config.h"
 
 
 /**

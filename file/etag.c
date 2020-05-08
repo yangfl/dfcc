@@ -2,9 +2,8 @@
 
 #include <glib.h>
 
-#include <macro.h>
-#include <wrapper/file.h>
-
+#include "common/macro.h"
+#include "common/wrapper/file.h"
 #include "etag.h"
 
 

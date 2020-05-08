@@ -1,6 +1,6 @@
 #include <libsoup/soup.h>
 
-#include "../version.h"
+#include "./version.h"
 
 
 static void Server_Debug_format_HTTP_content (

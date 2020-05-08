@@ -4,7 +4,7 @@
 #include <libsoup/soup.h>
 #include <glib.h>
 
-#include "../config/serverurl.h"
+#include "config/serverurl.h"
 
 
 bool Client_detect_server (

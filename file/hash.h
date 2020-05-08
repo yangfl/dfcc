@@ -6,8 +6,8 @@
 #include <glib.h>
 #include <xxhash.h>
 
-#include <hexstring.h>
-#include <macro.h>
+#include "common/hexstring.h"
+#include "common/macro.h"
 
 
 /**

@@ -5,7 +5,7 @@
  * @{
  */
 
-#include "../server/session.h"
+#include "server/session.h"
 
 
 /**

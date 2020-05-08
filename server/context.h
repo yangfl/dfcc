@@ -6,9 +6,9 @@
 #include <libsoup/soup.h>
 #include <gmodule.h>
 
-#include "../config/config.h"
-#include "../file/cache.h"
-#include "job.h"
+#include "config/config.h"
+#include "file/cache.h"
+#include "server/job.h"
 
 
 /**
@@ -16,13 +16,13 @@
  * @brief Contains information about the server
  */
 struct ServerContext {
-  /// SoupServer instance
+  /// SoupServer instance.
   SoupServer *server;
-
-  /// Config for the server
+  /// Config for the server.
   struct Config *config;
-
+  /// Source file cache.
   struct Cache cache;
+  /// Session table.
   struct SessionTable session_table;
   struct JobTable jobtable;
 };

@@ -1,10 +1,9 @@
 #include <glib.h>
 
-#include <macro.h>
-
-#include "../file/hash.h"
-#include "../version.h"
-#include "subprocess.h"
+#include "common/macro.h"
+#include "file/hash.h"
+#include "./version.h"
+#include "spawn/subprocess.h"
 #include "hookedsubprocess.h"
 
 

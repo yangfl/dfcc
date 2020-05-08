@@ -6,8 +6,8 @@
 
 #include <glib.h>
 
-#include "../spawn/subprocess.h"
-#include "session.h"
+#include "spawn/subprocess.h"
+#include "server/session.h"
 
 
 /**

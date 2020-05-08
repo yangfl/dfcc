@@ -3,8 +3,8 @@
 
 #include <gmodule.h>
 
-//#include "../server/session.h"
-#include "entry.h"
+//#include "server/session.h"
+#include "file/entry.h"
 
 
 //! @ingroup File

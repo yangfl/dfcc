@@ -4,11 +4,10 @@
 
 #include <glib.h>
 
-#include <hexstring.h>
-#include <macro.h>
-#include <wrapper/mappedfile.h>
-
-#include "../version.h"
+#include "common/hexstring.h"
+#include "common/macro.h"
+#include "common/wrapper/mappedfile.h"
+#include "./version.h"
 #include "hash.h"
 
 

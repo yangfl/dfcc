@@ -3,10 +3,9 @@
 
 #include <glib.h>
 
-#include <macro.h>
-
-#include "../spawn/subprocess.h"
-#include "session.h"
+#include "common/macro.h"
+#include "spawn/subprocess.h"
+#include "server/session.h"
 #include "job.h"
 
 

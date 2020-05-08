@@ -3,9 +3,8 @@
 
 #include <gmodule.h>
 
-#include <broadcast.h>
-
-#include "entry.h"
+#include "common/broadcast.h"
+#include "file/entry.h"
 
 
 //! @ingroup File

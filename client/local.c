@@ -1,10 +1,9 @@
 #include <glib.h>
 
-#include <macro.h>
-
-#include "../config/config.h"
-#include "../spawn/subprocess.h"
-#include "../version.h"
+#include "common/macro.h"
+#include "config/config.h"
+#include "spawn/subprocess.h"
+#include "./version.h"
 #include "local.h"
 
 

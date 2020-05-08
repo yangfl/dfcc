@@ -5,9 +5,8 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <macro.h>
-#include <simplestring.h>
-
+#include "common/macro.h"
+#include "common/simplestring.h"
 #include "limit.h"
 
 

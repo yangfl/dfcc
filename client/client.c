@@ -1,10 +1,9 @@
-#include <macro.h>
-
-#include "../ccargs/ccargs.h"
-#include "../version.h"
-#include "prepost.h"
-#include "local.h"
-#include "remote.h"
+#include "common/macro.h"
+#include "ccargs/ccargs.h"
+#include "./version.h"
+#include "client/prepost.h"
+#include "client/local.h"
+#include "client/remote.h"
 #include "client.h"
 
 

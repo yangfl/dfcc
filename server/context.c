@@ -1,10 +1,10 @@
 #include <gmodule.h>
 
-#include "../config/config.h"
-#include "../file/cache.h"
-#include "../version.h"
-#include "job.h"
-#include "session.h"
+#include "config/config.h"
+#include "file/cache.h"
+#include "./version.h"
+#include "server/job.h"
+#include "server/session.h"
 #include "context.h"
 
 

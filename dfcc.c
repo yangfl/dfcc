@@ -4,8 +4,7 @@
 
 #include <glib.h>
 
-#include <macro.h>
-
+#include "common/macro.h"
 #include "client/client.h"
 #include "server/server.h"
 #include "config/config.h"

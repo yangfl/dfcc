@@ -6,19 +6,18 @@
 #include <libsoup/soup.h>
 #include <glib.h>
 
-#include <hexstring.h>
-#include <macro.h>
-#include <wrapper/file.h>
-#include <wrapper/mappedfile.h>
-#include <wrapper/soup.h>
-
-#include "../config/config.h"
-#include "../config/serverurl.h"
-#include "../file/hash.h"
-#include "../server/job.h"
-#include "../server/protocol.h"
-#include "../version.h"
-#include "sessionid.h"
+#include "common/hexstring.h"
+#include "common/macro.h"
+#include "common/wrapper/file.h"
+#include "common/wrapper/mappedfile.h"
+#include "common/wrapper/soup.h"
+#include "config/config.h"
+#include "config/serverurl.h"
+#include "file/hash.h"
+#include "server/job.h"
+#include "server/protocol.h"
+#include "./version.h"
+#include "client/sessionid.h"
 #include "remote.h"
 
 

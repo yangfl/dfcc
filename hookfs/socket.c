@@ -4,8 +4,7 @@
 #include <threads.h>
 #include <unistd.h>
 
-#include "macro.h"
-
+#include "common/macro.h"
 #include "socket.h"
 
 

@@ -11,7 +11,7 @@ else
 	LDFLAGS += -s -flto
 endif
 
-CPPFLAGS += -Icommon
+CPPFLAGS += -I.
 CFLAGS += -fms-extensions
 LDFLAGS +=
 

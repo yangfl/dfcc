@@ -15,8 +15,7 @@
 #include <sys/stat.h>
 #include <linux/limits.h>  // PATH_MAX
 
-#include "macro.h"
-
+#include "common/macro.h"
 #include "serializer.h"
 #include "simpleiostream.h"
 #include "socket.h"

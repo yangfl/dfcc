@@ -1,7 +1,7 @@
 #ifndef DFCC_PROTOCOL_H
 #define DFCC_PROTOCOL_H
 
-#include "../version.h"
+#include "./version.h"
 
 
 #define DFCC_PORT 0xdfc
