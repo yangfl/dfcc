@@ -4,6 +4,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <threads.h>
 
 #include <glib.h>
 
@@ -23,6 +24,7 @@ struct HookedProcessController {
   GHashTable *table;
   /// Lock for `table`.
   GRWLock rwlock;
+
   /// Number of currently available job slots.
   atomic_int n_available;
   /// Preload libSegFault.so.
@@ -31,10 +33,13 @@ struct HookedProcessController {
   const char *selfpath;
   /// Path to the preload library `hookfs`.
   const char *hookfs;
+
   /// Source file cache.
   struct Cache cache;
+  cnd_t cond;
+  mtx_t cond_mtx;
 
-  void (*onmissing) (struct HookedProcess *, void *, char *);
+  void (*onmissing) (struct HookedProcessController *, void *, char *);
   void *onmissing_userdata;
 };
 

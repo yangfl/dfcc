@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="dfcc" />
+		<Option makefile_is_custom="1" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/dfcc" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/dfcc" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="cc/ccargs.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="cc/ccargs.h" />
+		<Unit filename="cc/resultinfo.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="cc/resultinfo.h" />
+		<Unit filename="client/client.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="client/client.h" />
+		<Unit filename="client/detect.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="client/detect.h" />
+		<Unit filename="client/local.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="client/local.h" />
+		<Unit filename="client/log.h" />
+		<Unit filename="client/prepost.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="client/prepost.h" />
+		<Unit filename="client/remote.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="client/remote.h" />
+		<Unit filename="client/sessionid.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="client/sessionid.h" />
+		<Unit filename="common/atomiccount.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/atomiccount.h" />
+		<Unit filename="common/broadcast.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/broadcast.h" />
+		<Unit filename="common/class.h" />
+		<Unit filename="common/class/_class.h" />
+		<Unit filename="common/controlflow.h" />
+		<Unit filename="common/hack.h" />
+		<Unit filename="common/hexstring.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/hexstring.h" />
+		<Unit filename="common/macro.h" />
+		<Unit filename="common/morestring.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/morestring.h" />
+		<Unit filename="common/simplestring.h" />
+		<Unit filename="common/structinfo.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/structinfo.h" />
+		<Unit filename="common/tinyglib.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/tinyglib.h" />
+		<Unit filename="common/wrapper/errno.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/wrapper/errno.h" />
+		<Unit filename="common/wrapper/file.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/wrapper/file.h" />
+		<Unit filename="common/wrapper/gvariant.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/wrapper/gvariant.h" />
+		<Unit filename="common/wrapper/mappedfile.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/wrapper/mappedfile.h" />
+		<Unit filename="common/wrapper/soup.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/wrapper/soup.h" />
+		<Unit filename="common/wrapper/threads.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common/wrapper/threads.h" />
+		<Unit filename="common/wrapper/wrappers.h" />
+		<Unit filename="config/config.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="config/config.h" />
+		<Unit filename="config/log.h" />
+		<Unit filename="config/serverurl.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="config/serverurl.h" />
+		<Unit filename="config/source/args.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="config/source/args.h" />
+		<Unit filename="config/source/conffile.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="config/source/conffile.h" />
+		<Unit filename="config/source/default.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="config/source/default.h" />
+		<Unit filename="config/source/mux.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="config/source/mux.h" />
+		<Unit filename="dfcc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="file/cache.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="file/cache.h" />
+		<Unit filename="file/entry.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="file/entry.h" />
+		<Unit filename="file/file.h" />
+		<Unit filename="file/fileserver.h" />
+		<Unit filename="file/hash.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="file/hash.h" />
+		<Unit filename="file/localindex.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="file/localindex.h" />
+		<Unit filename="file/log.h" />
+		<Unit filename="file/remoteindex.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="file/remoteindex.h" />
+		<Unit filename="file/stat.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="file/stat.h" />
+		<Unit filename="hookfs/hookfs.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hookfs/intercept.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hookfs/intercept.h" />
+		<Unit filename="hookfs/limit.h" />
+		<Unit filename="hookfs/serializer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hookfs/serializer.h" />
+		<Unit filename="hookfs/simpleiostream.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hookfs/simpleiostream.h" />
+		<Unit filename="hookfs/socket.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hookfs/socket.h" />
+		<Unit filename="server/_sessionid.h" />
+		<Unit filename="server/context.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/context.h" />
+		<Unit filename="server/debug.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/debug.h" />
+		<Unit filename="server/handler/common.h" />
+		<Unit filename="server/handler/download.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/download.h" />
+		<Unit filename="server/handler/handler.h" />
+		<Unit filename="server/handler/homepage.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/homepage.h" />
+		<Unit filename="server/handler/info.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/info.h" />
+		<Unit filename="server/handler/middleware.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/middleware.h" />
+		<Unit filename="server/handler/rpc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/rpc.h" />
+		<Unit filename="server/handler/rpc/associate.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/rpc/associate.h" />
+		<Unit filename="server/handler/rpc/common.h" />
+		<Unit filename="server/handler/rpc/query.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/rpc/query.h" />
+		<Unit filename="server/handler/rpc/submit.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/rpc/submit.h" />
+		<Unit filename="server/handler/upload.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/handler/upload.h" />
+		<Unit filename="server/log.h" />
+		<Unit filename="server/protocol.h" />
+		<Unit filename="server/server.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/server.h" />
+		<Unit filename="server/session.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="server/session.h" />
+		<Unit filename="spawn/_hookedprocessgroupid.h" />
+		<Unit filename="spawn/hookedprocess.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="spawn/hookedprocess.h" />
+		<Unit filename="spawn/hookedprocessgroup.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="spawn/hookedprocessgroup.h" />
+		<Unit filename="spawn/hookfsserver.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="spawn/hookfsserver.h" />
+		<Unit filename="spawn/log.h" />
+		<Unit filename="spawn/process.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="spawn/process.h" />
+		<Unit filename="tests/a.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="tmp/project1/Gemm/macro.h" />
+		<Unit filename="tmp/project1/Gemm/matrix.h" />
+		<Unit filename="tmp/project1/Gemm/mpi++.h" />
+		<Unit filename="tmp/project1/MPI_ALLGATHER/macro.h" />
+		<Unit filename="tmp/project1/MPI_ALLGATHER/mpi++.h" />
+		<Unit filename="tmp/project1/Wordcout/macro.h" />
+		<Unit filename="tmp/project1/Wordcout/mpi++.h" />
+		<Unit filename="tmp/x/tmp/macro.h" />
+		<Unit filename="tmp/x/tmp/tinyglib.h" />
+		<Unit filename="vendor/doxygen.h" />
+		<Unit filename="vendor/whereami/src/whereami.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="vendor/whereami/src/whereami.h" />
+		<Unit filename="version.h" />
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>

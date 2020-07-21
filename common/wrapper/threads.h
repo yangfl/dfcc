@@ -36,6 +36,19 @@ WRAP_THREADS_GERROR(
   int, mtx_unlock, (mtx_t *mutex, GError **error),
   (mutex), == thrd_success, "Failed to unlock mutex")
 
+WRAP_THREADS_GERROR(
+  int, cnd_init, (cnd_t* cond, GError **error),
+  (cond), == thrd_success, "Failed to initialise condition")
+WRAP_THREADS_GERROR(
+  int, cnd_signal, (cnd_t* cond, GError **error),
+  (cond), == thrd_success, "Failed to unblock condition")
+WRAP_THREADS_GERROR(
+  int, cnd_broadcast, (cnd_t* cond, GError **error),
+  (cond), == thrd_success, "Failed to broadcast condition")
+WRAP_THREADS_GERROR(
+  int, cnd_wait, (cnd_t* cond, mtx_t* mutex, GError **error),
+  (cond, mutex), == thrd_success, "Failed to wait condition")
+
 #undef WRAP_THREADS_GERROR
 
 

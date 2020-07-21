@@ -37,7 +37,7 @@ struct Process {
 
   //! Whether the process has stopped.
   bool stopped;
-  //! Mutex for stop event.
+  //! Mutex for events.
   mtx_t mtx;
   //! Exit error if any.
   GError *error;

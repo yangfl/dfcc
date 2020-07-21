@@ -33,7 +33,8 @@ static struct HookedProcess *HookedProcessController_resolve (
     void *controller_, HookedProcessGroupID hgid, GPid pid) {
   struct HookedProcessController *controller =
     (struct HookedProcessController *) controller_;
-  struct HookedProcessGroup *group = HookedProcessController_lookup(controller, hgid);
+  struct HookedProcessGroup *group = HookedProcessController_lookup(
+    controller, hgid);
   return_if_fail(group != NULL) NULL;
   return HookedProcessGroup_lookup(group, pid);
 }

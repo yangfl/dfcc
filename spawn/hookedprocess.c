@@ -38,45 +38,14 @@ void HookedProcessOutput_free (void *output) {
 int HookedProcessOutput_init (
     struct HookedProcessOutput *output, gchar *path,
     int mode, GError **error) {
-  output->fd = g_file_open_tmp(DFCC_SPAWN_NAME "-XXXXXX", &output->tmp_path, error);
+  output->fd = g_file_open_tmp(
+    DFCC_SPAWN_NAME "-XXXXXX", &output->tmp_path, error);
   should (output->fd != -1) otherwise {
     return 1;
   }
   output->path = path;
   output->mode = mode;
   return 0;
-}
-
-
-static GThreadPool *HookedProcess__threadpool = NULL;
-
-
-static int HookedProcess_poll (
-    struct HookedProcess *p, unsigned short *revents) {
-  GPollFD fds[] = {
-    {p->stderr, G_IO_IN | G_IO_HUP | G_IO_ERR},
-  };
-  int ret = g_poll(fds, 1, -1);
-  if (revents != NULL) {
-    *revents = fds[0].revents;
-  }
-  return ret;
-}
-
-
-void HookedProcess_join (struct HookedProcess *p) {
-  if (!p->stopped) {
-    unsigned short revents;
-    HookedProcess_poll(p, &revents);
-    if unlikely (revents & G_IO_ERR || revents & G_IO_HUP) {
-      return;
-    }
-  }
-}
-
-
-gboolean HookedProcess_run (struct HookedProcess *p, GError **error) {
-  return g_thread_pool_push(HookedProcess__threadpool, p, error);
 }
 
 
@@ -96,6 +65,12 @@ int HookedProcess_init (
     struct HookedProcess *p, gchar **argv, gchar **envp,
     HookedProcessExitCallback onexit, void *userdata,
     struct HookedProcessGroup *group, GError **error) {
+  should (g_file_test(
+      group->controller->hookfs, G_FILE_TEST_EXISTS)) otherwise {
+    g_set_error(error, DFCC_SPAWN_ERROR, 0,
+                "HookFs lib '%s' gone", group->controller->hookfs);
+    return 1;
+  }
   p->group = group;
 
   gchar **envp_hooked = g_strdupv(envp);
@@ -130,8 +105,8 @@ int HookedProcess_init (
 
 
 struct HookedProcess *HookedProcess_new (
-    gchar **argv, gchar **envp, HookedProcessExitCallback onexit, void *userdata,
-    struct HookedProcessGroup *group, GError **error) {
+    gchar **argv, gchar **envp, HookedProcessExitCallback onexit,
+    void *userdata, struct HookedProcessGroup *group, GError **error) {
   struct HookedProcess *p = g_new(struct HookedProcess, 1);
   should (HookedProcess_init(
       p, argv, envp, onexit, userdata, group, error
@@ -140,17 +115,4 @@ struct HookedProcess *HookedProcess_new (
     return NULL;
   }
   return p;
-}
-
-
-void HookedProcess__destruct (void) {
-  g_thread_pool_free(HookedProcess__threadpool, FALSE, TRUE);
-  HookedProcess__threadpool = NULL;
-}
-
-
-int HookedProcess__construct (GError **error) {
-  HookedProcess__threadpool =
-    g_thread_pool_new((GFunc) HookedProcess_join, NULL, -1, FALSE, error);
-  return HookedProcess__threadpool == NULL;
 }

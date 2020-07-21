@@ -119,10 +119,10 @@ close:
   // Connection closed
   if unlikely (conn->p == NULL) {
     g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING,
-          "Connection closed from unknow process");
+          "HookFs connection closed from unknown process");
   } else {
     g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
-          "Connection closed to %x:%d", conn->p->group->hgid, conn->p->pid);
+          "HookFs connection %x:%d closed", conn->p->group->hgid, conn->p->pid);
   }
   g_object_unref(conn->connection);
   g_free(conn);

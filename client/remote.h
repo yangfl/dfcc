@@ -6,7 +6,7 @@
  */
 
 #include "config/config.h"
-#include "client/prepost.h"
+#include "cc/resultinfo.h"
 
 
 /**
@@ -16,7 +16,7 @@
  * @return 0 if success, otherwise non-zero
  */
 int Client_run_remotely (
-  const struct Config *config, struct Result * restrict result,
+  const struct Config *config, struct ResultInfo * restrict result,
   char * const remote_argv[], char * const remote_envp[]);
 
 

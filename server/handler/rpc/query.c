@@ -1,6 +1,7 @@
 #include <libsoup/soup.h>
 
 #include "common/macro.h"
+#include "common/wrapper/gvariant.h"
 #include "common/wrapper/threads.h"
 #include "common/wrapper/soup.h"
 #include "../../protocol.h"

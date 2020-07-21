@@ -2,7 +2,7 @@
 #define DFCC_CLIENT_LOCAL_H
 
 #include "config/config.h"
-#include "client/prepost.h"
+#include "cc/resultinfo.h"
 
 
 /**
@@ -12,7 +12,7 @@
  * @param config a Config
  * @return the exit status of the compiler
  */
-int Client_run_locally (struct Config *config, struct Result * restrict result);
+int Client_run_locally (struct Config *config, struct ResultInfo * restrict result);
 
 
 #endif /* DFCC_CLIENT_LOCAL_H */

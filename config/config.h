@@ -6,7 +6,7 @@
 
 #include <stdbool.h>
 
-#include "common/structinfo.h"
+#include "common/typeinfo.h"
 #include "config/serverurl.h"
 
 
@@ -115,7 +115,6 @@ struct Config {
 
 
 extern struct StructInfo Config__info[];
-extern const int Config__info_n;
 
 
 /**

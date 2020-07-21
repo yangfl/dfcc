@@ -19,22 +19,20 @@ CPPFLAGS += -I. -D_DEFAULT_SOURCE
 CFLAGS += -std=c18 -fms-extensions
 LDFLAGS +=
 
-LIBS := glib-2.0 gio-2.0 gio-unix-2.0 libsoup-2.4
-LIBS_CPPFLAGS := -Ivendor/whereami/src $(shell pkg-config --cflags-only-I $(LIBS))
+LIBS := glib-2.0 gio-2.0 gio-unix-2.0 libsoup-2.4 libxxhash whereami
+LIBS_CPPFLAGS := $(shell pkg-config --cflags-only-I $(LIBS))
 LIBS_CFLAGS := $(shell pkg-config --cflags-only-other $(LIBS))
-LIBS_LDFLAGS := -lxxhash -lpthread $(shell pkg-config --libs $(LIBS))
+LIBS_LDFLAGS := $(shell pkg-config --libs $(LIBS)) -lpthread
 
 CPPFLAGS += $(LIBS_CPPFLAGS)
 CFLAGS += $(LIBS_CFLAGS)
 LDFLAGS += $(LIBS_LDFLAGS)
 
 SOURCES := \
-	vendor/whereami/src/whereami.c \
-	\
 	common/broadcast.c common/hexstring.c common/morestring.c \
-	common/atomiccount.c common/structinfo.c \
-		common/wrapper/errno.c common/wrapper/file.c common/wrapper/mappedfile.c \
-		common/wrapper/soup.c common/wrapper/threads.c \
+	common/atomiccount.c common/typeinfo.c \
+		common/wrapper/errno.c common/wrapper/file.c common/wrapper/gvariant.c \
+		common/wrapper/mappedfile.c common/wrapper/soup.c common/wrapper/threads.c \
 	\
 	config/config.c config/serverurl.c \
 		config/source/args.c config/source/default.c config/source/conffile.c \
@@ -46,7 +44,7 @@ SOURCES := \
 	spawn/hookfsserver.c spawn/hookedprocess.c spawn/hookedprocessgroup.c \
 		spawn/process.c \
 	\
-	ccargs/ccargs.c \
+	cc/ccargs.c cc/resultinfo.c \
 	\
 	client/client.c client/local.c \
 	client/remote.c client/prepost.c client/sessionid.c \

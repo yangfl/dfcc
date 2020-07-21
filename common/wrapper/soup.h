@@ -10,6 +10,8 @@
 #include <libsoup/soup.h>
 #include <glib/gstdio.h>
 
+#include "gvariant.h"
+
 
 void soup_xmlrpc_message_log_and_set_fault (
   SoupMessage *msg, int fault_code, const char *log_domain,
@@ -34,11 +36,6 @@ GVariant *soup_session_xmlrpc (
     (session), (uri), method, (log_domain), (status), \
     g_variant_new(DFCC_RPC_ ## method ## _REQUEST_SIGNATURE, __VA_ARGS__))
 
-#define return_if_g_variant_not_type(v, s, log_domain) \
-  should (g_variant_is_of_type((v), G_VARIANT_TYPE(s))) otherwise \
-    if (g_log((log_domain), G_LOG_LEVEL_WARNING, \
-          "Expect type '%s', got '%s'", (s), g_variant_get_type_string(v)), 1) \
-      return
 
 /**@}*/
 

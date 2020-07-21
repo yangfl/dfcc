@@ -5,7 +5,7 @@
 #include "ccargs.h"
 
 
-bool CCargs_can_run_remotely (char **cc_argv[], char **cc_envp[]) {
+bool CC_can_run_remotely (char **cc_argv[], char **cc_envp[]) {
   static const char *variables[] = {
     "CLUTTER_IM_MODULE", "COLORTERM", "DBUS_SESSION_BUS_ADDRESS",
     "DESKTOP_SESSION", "DISPLAY", "GDM_LANG", "GDMSESSION", "GPG_AGENT_INFO",

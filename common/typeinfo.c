@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "structinfo.h"
+#include "typeinfo.h"
 
 
 static inline int StructInfo_match_ (

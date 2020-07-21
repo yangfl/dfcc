@@ -9,12 +9,14 @@
 #include "common/hexstring.h"
 #include "common/macro.h"
 #include "common/wrapper/file.h"
+#include "common/wrapper/gvariant.h"
 #include "common/wrapper/mappedfile.h"
 #include "common/wrapper/soup.h"
 #include "config/config.h"
 #include "config/serverurl.h"
 #include "file/hash.h"
 #include "server/protocol.h"
+#include "cc/resultinfo.h"
 #include "log.h"
 #include "sessionid.h"
 #include "remote.h"
@@ -146,40 +148,6 @@ static int RemoteConnection_init (struct RemoteConnection *conn, bool debug) {
   conn->downloaduri = NULL;
 
   return 0;
-}
-
-
-static GVariant *Client_pack_settings (const struct Config *config) {
-  GVariantBuilder builder;
-  g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
-
-#define case_type(TYPE, type, func) \
-  case G_TYPE_ ## TYPE: { \
-    type value = G_STRUCT_MEMBER(type, config, Config__info[i].offset); \
-    if (value) { \
-      g_variant_builder_add( \
-        &builder, "{sv}", \
-        Config__info[i].key, g_variant_new_ ## func(value)); \
-    } \
-    break; \
-  }
-
-  for (int i = 0; i < Config__info_n; i++) {
-    switch (Config__info[i].type) {
-      case_type(BOOLEAN, bool, boolean)
-      case_type(CHAR, char, byte)
-      case_type(INT, int, int32)
-      case_type(INT64, long long, int64)
-      default:
-        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING,
-              "Unknown type '%s' for key '%s'",
-              g_type_name(Config__info[i].type), Config__info[i].key);
-    }
-  }
-
-#undef case_type
-
-  return g_variant_builder_end(&builder);
 }
 
 
@@ -396,7 +364,7 @@ named_block(loop_error): {
 
 static int Client_remote_finish (
     struct RemoteConnection *conn, GVariant *filelist,
-    struct Result * restrict result) {
+    struct ResultInfo * restrict result) {
   return_if_g_variant_not_type(
     filelist, DFCC_RPC_QUERY_RESPONSE_FINISH_SIGNATURE, DFCC_CLIENT_NAME) 1;
 
@@ -416,47 +384,14 @@ static int Client_remote_finish (
     }
   }
 
-#define case_type(TYPE, type, func) \
-  case G_TYPE_ ## TYPE: { \
-    type value_ = g_variant_get_ ## func(value); \
-    if (value_) { \
-      G_STRUCT_MEMBER(type, result, keyinfo->offset) = value_; \
-    } \
-    break; \
-  }
-
-  char *key;
-  GVariant *value;
-  for (g_variant_iter_init(&iter, info);
-       g_variant_iter_loop(&iter, "{st}", &key, &value);) {
-    size_t Result__info_n_ = Result__info_n;
-    struct StructInfo *keyinfo = lfind(
-      key, Result__info, &Result__info_n_,
-      sizeof(struct StructInfo), StructInfo_match);
-    should (keyinfo != NULL) otherwise {
-      g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING, "Unknown return info '%s'", key);
-      continue;
-    }
-    switch (keyinfo->type) {
-      case_type(BOOLEAN, bool, boolean)
-      case_type(CHAR, char, byte)
-      case_type(INT, int, int32)
-      case_type(INT64, long long, int64)
-      default:
-        g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING,
-              "Unknown type '%s' for key '%s'",
-              g_type_name(keyinfo->type), keyinfo->key);
-    }
-  }
-
-#undef case_type
+  g_variant_get_struct(info, result, ResultInfo__info);
 
   return 0;
 }
 
 
 int Client_run_remotely (
-    const struct Config *config, struct Result * restrict result,
+    const struct Config *config, struct ResultInfo * restrict result,
     char * const remote_argv[], char * const remote_envp[]) {
   int ret = 0;
   struct RemoteConnection conn;
@@ -464,7 +399,8 @@ int Client_run_remotely (
 
   if unlikely (Client_try_submit(
       &conn, config->server_list, remote_argv, remote_envp,
-      config->cc_working_directory, Client_pack_settings(config)) != 0) {
+      config->cc_working_directory,
+      g_variant_new_struct(config, Config__info)) != 0) {
     g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING, "No server available");
     RemoteConnection_destroy(&conn);
     return 1;

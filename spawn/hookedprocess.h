@@ -71,11 +71,11 @@ struct HookedProcess {
   struct HookedProcessGroup *group;
   GHashTable *outputs;
   HookedProcessExitCallback onexit_hooked;
+  const char *missing_path;
+  int mode;
 };
 
 
-//! @memberof HookedProcess
-gboolean HookedProcess_run (struct HookedProcess *p, GError **error);
 /**
  * @memberof HookedProcess
  * @brief Frees associated resources of a HookedProcess.

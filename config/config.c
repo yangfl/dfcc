@@ -14,9 +14,11 @@
 
 
 struct StructInfo Config__info[] = {
-  {"trust", G_TYPE_BOOLEAN, offsetof(struct Config, trust)},
+#define STRUCT_INFO_TYPE struct Config
+  STRUCT_INFO(trust),
+  STRUCT_INFO_END
+#undef STRUCT_INFO_TYPE
 };
-const int Config__info_n = G_N_ELEMENTS(Config__info);
 
 
 /**

@@ -32,7 +32,7 @@ int Config_parse_args (struct Config *config, char *args[]) {
     {"debug", 'd', 0, G_OPTION_ARG_NONE, &config->debug, "Enable debug output", NULL},
     {"version", 'v', 0, G_OPTION_ARG_NONE, &config->show_version, "Print the version and exit", NULL},
     {"config", 'c', 0, G_OPTION_ARG_STRING, &config->confpath, "Path to the config file", "file"},
-    {G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_CALLBACK, Config_parse_cc_argv, NULL, NULL},
+    {G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_CALLBACK, (void *) Config_parse_cc_argv, NULL, NULL},
     {NULL}
   };
   g_option_context_add_main_entries(context, entries, GETTEXT_PACKAGE);

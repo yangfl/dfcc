@@ -220,14 +220,14 @@ HOOK_PATH(int, access, (pathname, mode), pathname,
 WRAP(int, stat) (const char *pathname, struct stat *statbuf)
 HOOK_PATH(int, stat, (pathname, statbuf), pathname,
   serialize_string(&serdes, pathname);
-  serialize_printf(&serdes, "%p", (void *) statbuf);
+  serialize_numerical(&serdes, statbuf);
 )
 
 
 WRAP(int, lstat) (const char *pathname, struct stat *statbuf)
 HOOK_PATH(int, lstat, (pathname, statbuf), pathname,
   serialize_string(&serdes, pathname);
-  serialize_printf(&serdes, "%p", (void *) statbuf);
+  serialize_numerical(&serdes, statbuf);
 )
 
 
@@ -277,7 +277,7 @@ WRAP(FILE *, freopen) (const char *filename, const char *mode, FILE *stream)
 HOOK_PATH(FILE *, freopen, (filename, mode, stream), filename,
   serialize_string(&serdes, filename);
   serialize_string(&serdes, mode);
-  serialize_printf(&serdes, "%p", (void *) stream);
+  serialize_numerical(&serdes, stream);
 )
 
 
@@ -285,7 +285,7 @@ WRAP(FILE *, freopen64) (const char *filename, const char *mode, FILE *stream)
 HOOK_PATH(FILE *, freopen64, (filename, mode, stream), filename,
   serialize_string(&serdes, filename);
   serialize_string(&serdes, mode);
-  serialize_printf(&serdes, "%p", (void *) stream);
+  serialize_numerical(&serdes, stream);
 )
 
 
@@ -371,7 +371,7 @@ static void __attribute__ ((constructor)) hookfs_init () {
   serialize_literal(&serdes, "-id");
   serialize_string(&serdes, hookfs_ns);
   uint32_t pid = getpid();
-  serialize_literal(&serdes, &pid);
+  serialize_numerical(&serdes, pid);
   serialize_end(&serdes);
 
   should (Socket_send(&sock, buf.data, buf.len) >= 0) otherwise {
