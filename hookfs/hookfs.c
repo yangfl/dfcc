@@ -27,7 +27,7 @@
  */
 
 
-struct Serializer serdes_;
+struct Serializer serdes;
 struct Socket sock;
 
 #define check(func) \
@@ -81,51 +81,29 @@ static void *resolve (const char *symbol) {
   type symbol
 
 #define HOOK(type, func, args, ...) { \
-  struct Serializer serdes = serdes_; \
-  GString buf; \
-  g_string_init(&buf, NULL); \
-  serdes.ostream = &buf; \
-  \
+  mtx_lock(&sock.mtx); \
   serialize_literal(&serdes, # func); \
   __VA_ARGS__ \
   serialize_end(&serdes); \
-  \
-  should (Socket_send(&sock, buf.data, buf.len) >= 0) otherwise { \
-    exit(255); \
-  } \
-  g_string_destroy(&buf, false); \
+  mtx_unlock(&sock.mtx); \
   \
   type ret = libc_ ## func args; \
   return ret; \
 }
 
 #define HOOK_PATH(type, func, args, path, ...) { \
-  struct Serializer serdes = serdes_; \
-  GString buf; \
-  g_string_init(&buf, NULL); \
-  serdes.ostream = &buf; \
-  \
+  mtx_lock(&sock.mtx); \
   serialize_literal(&serdes, # func); \
   __VA_ARGS__ \
   serialize_end(&serdes); \
   \
-  mtx_lock(&sock.mtx); \
-  should (Socket_send(&sock, buf.data, buf.len) >= 0) otherwise { \
-    exit(255); \
-  } \
-  g_string_destroy(&buf, false); \
-  \
   char recv_buf[Hookfs_MAX_TOKEN_LEN]; \
-  serdes.istream = recv_buf; \
-  should (Socket_recv(&sock, recv_buf, sizeof(recv_buf)) >= 0) otherwise { \
-    exit(255); \
-  } \
+  ssize_t new_path_len = deserialize_length(&serdes, deserialize_next(&serdes, NULL)); \
+  deserialize(&serdes, recv_buf, (size_t) new_path_len, NULL); \
   mtx_unlock(&sock.mtx); \
   \
-  Serializer__size_t new_path_len = *(Serializer__size_t *)recv_buf; \
   if (new_path_len > 0) { \
-    recv_buf[new_path_len + sizeof(new_path_len)] = '\0'; \
-    (path) = recv_buf + sizeof(new_path_len); \
+    (path) = recv_buf; \
   } \
   type ret = libc_ ## func args; \
   return ret; \
@@ -220,14 +198,14 @@ HOOK_PATH(int, access, (pathname, mode), pathname,
 WRAP(int, stat) (const char *pathname, struct stat *statbuf)
 HOOK_PATH(int, stat, (pathname, statbuf), pathname,
   serialize_string(&serdes, pathname);
-  serialize_numerical(&serdes, statbuf);
+  serialize_numerical(&serdes, (uint64_t) statbuf);
 )
 
 
 WRAP(int, lstat) (const char *pathname, struct stat *statbuf)
 HOOK_PATH(int, lstat, (pathname, statbuf), pathname,
   serialize_string(&serdes, pathname);
-  serialize_numerical(&serdes, statbuf);
+  serialize_numerical(&serdes, (uint64_t) statbuf);
 )
 
 
@@ -277,7 +255,7 @@ WRAP(FILE *, freopen) (const char *filename, const char *mode, FILE *stream)
 HOOK_PATH(FILE *, freopen, (filename, mode, stream), filename,
   serialize_string(&serdes, filename);
   serialize_string(&serdes, mode);
-  serialize_numerical(&serdes, stream);
+  serialize_numerical(&serdes, (uint64_t) stream);
 )
 
 
@@ -285,7 +263,7 @@ WRAP(FILE *, freopen64) (const char *filename, const char *mode, FILE *stream)
 HOOK_PATH(FILE *, freopen64, (filename, mode, stream), filename,
   serialize_string(&serdes, filename);
   serialize_string(&serdes, mode);
-  serialize_numerical(&serdes, stream);
+  serialize_numerical(&serdes, (uint64_t) stream);
 )
 
 
@@ -357,28 +335,16 @@ static void __attribute__ ((constructor)) hookfs_init () {
     exit(255);
   }
 
-  serdes_.printf = (Serializer__printf_t) sioprintf;
-  serdes_.write = (Serializer__write_t) siowrite;
-  serdes_.scanf = (Serializer__scanf_t) sioscanf;
-  serdes_.read = (Serializer__read_t) sioread;
+  serdes.istream = &sock;
+  serdes.ostream = &sock;
+  serdes.write = (Serializer__write_t) Socket_send;
+  serdes.read = (Serializer__read_t) Socket_recv;
 
-  struct Serializer serdes = serdes_;
-  GString buf;
-  g_string_destroy(&buf, false);
-
-  g_string_init(&buf, NULL);
-  serdes.ostream = &buf;
   serialize_literal(&serdes, "-id");
   serialize_string(&serdes, hookfs_ns);
   uint32_t pid = getpid();
   serialize_numerical(&serdes, pid);
   serialize_end(&serdes);
-
-  should (Socket_send(&sock, buf.data, buf.len) >= 0) otherwise {
-    exit(255);
-  }
-
-  g_string_destroy(&buf, false);
 }
 
 

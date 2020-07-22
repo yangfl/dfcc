@@ -1,66 +1,80 @@
 #ifndef HOOKFS_SERIALIZER_H
 #define HOOKFS_SERIALIZER_H
 
-#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/types.h>
 
 #include "common/macro.h"
-#include "common/simplestring.h"
 #include "limit.h"
 
 
 //! @memberof Serializer
-typedef int (*Serializer__printf_t)
-  (void * restrict, const char * restrict, ...)
-  __attribute__((format(printf, 2, 3)));
+typedef ssize_t (*Serializer__write_t) (void *, const void *, size_t);
 //! @memberof Serializer
-typedef size_t (*Serializer__write_t)
-  (const void * restrict, size_t, size_t, void * restrict);
-//! @memberof Serializer
-typedef int (*Serializer__scanf_t)
-  (void * restrict, const char * restrict, ...)
-  __attribute__((format(scanf, 2, 3)));
-//! @memberof Serializer
-typedef size_t (*Serializer__read_t)
-  (void * restrict, size_t, size_t, void * restrict);
-//! @memberof Serializer
-typedef SimpleString__size_t Serializer__size_t;
+typedef ssize_t (*Serializer__read_t) (void *, void *, size_t);
 
 
 //! @ingroup Hookfs
 struct Serializer {
   void *ostream;
-  Serializer__printf_t printf;
   Serializer__write_t write;
   void *istream;
-  Serializer__scanf_t scanf;
   Serializer__read_t read;
+};
+
+
+//! @memberof Serializer
+inline ssize_t Serializer_write (struct Serializer *serdes, const void *buf, size_t count) {
+  return serdes->write(serdes->ostream, buf, count);
+}
+
+//! @memberof Serializer
+inline ssize_t Serializer_read (struct Serializer *serdes, void *buf, size_t count) {
+  return serdes->read(serdes->istream, buf, count);
+}
+
+
+enum {
+  MESSAGE_END = 0,
+  MESSAGE_ARRAY,
+  MESSAGE_NUMERICAL,
+  MESSAGE_STRING,
+};
+
+
+__attribute__((__packed__))
+struct Message {
+  unsigned char type;
+  uint64_t num;
 };
 
 
 /**
  * @memberof Serializer
- * @brief Serializes a token.
+ * @brief Serializes a numerical variable.
  *
  * @param serdes a Serializer
- * @param data data to be serialized
- * @param len length of `data`
+ * @param num a number
  */
-inline int serialize (struct Serializer *serdes, const void *data, Serializer__size_t len) {
-  int ret = serdes->write(&len, sizeof(len), 1, serdes->ostream);
-  should (ret >= 0) otherwise {
-    return ret;
-  }
-  ret += serdes->write(data, len, 1, serdes->ostream);
-  return ret;
-}
+ssize_t serialize_numerical (struct Serializer *serdes, uint64_t num);
+
+/**
+ * @memberof Serializer
+ * @brief Serializes a string.
+ *
+ * @param serdes a Serializer
+ * @param str string to be serialized
+ * @param len length of `str`
+ */
+ssize_t serialize_string_len (struct Serializer *serdes, const char *str, uint64_t len);
 
 //! @memberof Serializer
 #define serialize_printf(serdes, fmt, ...) { \
   char buf[Hookfs_MAX_TOKEN_LEN]; \
-  SimpleString__size_t len = snprintf(buf, sizeof(buf), (fmt), __VA_ARGS__); \
-  serialize((serdes)->ostream, buf, len); \
+  size_t len = snprintf(buf, sizeof(buf), (fmt), __VA_ARGS__); \
+  serialize_string_len((serdes)->ostream, buf, len); \
 }
 
 /**
@@ -70,8 +84,8 @@ inline int serialize (struct Serializer *serdes, const void *data, Serializer__s
  * @param serdes a Serializer
  * @param str a null-terminated string
  */
-inline int serialize_string (struct Serializer *serdes, const char *str) {
-  return serialize(serdes, str, strlen(str) + 1);
+inline ssize_t serialize_string (struct Serializer *serdes, const char *str) {
+  return serialize_string_len(serdes, str, strlen(str) + 1);
 }
 
 /**
@@ -82,37 +96,53 @@ inline int serialize_string (struct Serializer *serdes, const char *str) {
  * @param str a literal string
  */
 #define serialize_literal(serdes, str) \
-  serialize((serdes), (str), sizeof(str))
-
-/**
- * @memberof Serializer
- * @brief Serializes a numerical variable.
- *
- * @param serdes a Serializer
- * @param num a number
- */
-#define serialize_numerical(serdes, num) \
-  serialize((serdes), &(num), sizeof(num))
+  serialize_string_len((serdes), (str), sizeof(str))
 
 //! @memberof Serializer
-int serialize_strv (struct Serializer *serdes, char * const *data);
+ssize_t serialize_strv (struct Serializer *serdes, char * const *data);
 
 //! @memberof Serializer
-inline int serialize_end (struct Serializer *serdes) {
-  SimpleString__size_t len = 0;
-  return serdes->write(&len, sizeof(len), 1, serdes->ostream);
+inline ssize_t serialize_end (struct Serializer *serdes) {
+  const unsigned char end = MESSAGE_END;
+  return Serializer_write(serdes, &end, sizeof(end));
+}
+
+#define fortoken(t, serdes, err) for (unsigned char t; t = deserialize_next(serdes, err);)
+
+//! @memberof Serializer
+inline char deserialize_next (struct Serializer *serdes, int *err) {
+  unsigned char type;
+  ssize_t ret = Serializer_read(serdes, &type, sizeof(type));
+  should (ret >= 0) otherwise {
+    *err = (int) ret;
+  }
+  return type;
+}
+
+//! @memberof Serializer
+inline ssize_t deserialize_length (struct Serializer *serdes, unsigned char type) {
+  switch (type) {
+    case MESSAGE_NUMERICAL:
+      return sizeof(uint64_t);
+    case MESSAGE_STRING: {
+      uint64_t len;
+      ssize_t ret = Serializer_read(serdes, &len, sizeof(len));
+      should (ret >= 0) otherwise {
+        return ret;
+      }
+      return len;
+    }
+    default:
+      return -2;
+  }
 }
 
 //! @memberof Serializer
 void *deserialize (struct Serializer *serdes, void *buf, size_t size, size_t *read);
 
 //! @memberof Serializer
-inline void *deserialize_new (struct Serializer *serdes, size_t *read) {
-  return deserialize(serdes, NULL, 0, read);
+inline void *deserialize_new (struct Serializer *serdes, size_t size, size_t *read) {
+  return deserialize(serdes, NULL, size, read);
 }
-
-//! @memberof Serializer
-char *deserialize_string (struct Serializer *serdes, char *buf, size_t size, size_t *read);
-
 
 #endif /* HOOKFS_SERIALIZER_H */

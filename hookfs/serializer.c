@@ -8,82 +8,96 @@
 #include "serializer.h"
 
 
-extern inline int serialize (struct Serializer *serdes, const void *data, Serializer__size_t len);
-extern inline int serialize_string (struct Serializer *serdes, const char *data);
-extern inline int serialize_end (struct Serializer *serdes);
-extern inline void *deserialize_new (struct Serializer *serdes, size_t *read);
+extern inline ssize_t Serializer_write (struct Serializer *serdes, const void *buf, size_t count);
+extern inline ssize_t Serializer_read (struct Serializer *serdes, void *buf, size_t count);
+extern inline ssize_t serialize_string (struct Serializer *serdes, const char *str);
+extern inline ssize_t serialize_end (struct Serializer *serdes);
+extern inline char deserialize_next (struct Serializer *serdes, int *err);
+extern inline ssize_t deserialize_length (struct Serializer *serdes, unsigned char type);
+extern inline void *deserialize_new (struct Serializer *serdes, size_t size, size_t *read);
 
 
-int serialize_strv (struct Serializer *serdes, char * const *data) {
-  char buf[Hookfs_MAX_TOKEN_LEN];
-
-  Serializer__size_t buf_i = 0;
-  for (int i = 0; data[i] != NULL; i++) {
-    Serializer__size_t data_i_len = strlen(data[i]);
-    memcpy(buf + buf_i, &data_i_len, sizeof(data_i_len));
-    buf_i += sizeof(data_i_len);
-    memcpy(buf + buf_i, data[i], data_i_len);
-    buf_i += data_i_len;
+ssize_t serialize_numerical (struct Serializer *serdes, uint64_t num) {
+  const unsigned char numerical = MESSAGE_NUMERICAL;
+  ssize_t ret = Serializer_write(serdes, &numerical, sizeof(numerical));
+  should (ret >= 0) otherwise {
+    return ret;
   }
-  Serializer__size_t data_end = 0;
-  memcpy(buf + buf_i, &data_end, sizeof(data_end));
-  buf_i += sizeof(data_end);
+  ssize_t err = Serializer_write(serdes, &num, sizeof(num));
+  should (err >= 0) otherwise {
+    return err;
+  }
+  return ret + err;
+}
 
-  return serialize(serdes, buf, buf_i + 1);
+
+ssize_t serialize_string_len (struct Serializer *serdes, const char *str, uint64_t len) {
+  const unsigned char string_ = MESSAGE_STRING;
+  ssize_t ret = Serializer_write(serdes, &string_, sizeof(string_));
+  should (ret >= 0) otherwise {
+    return ret;
+  }
+  ssize_t err = Serializer_write(serdes, &len, sizeof(len));
+  should (err >= 0) otherwise {
+    return err;
+  }
+  ret += err;
+  err = Serializer_write(serdes, str, len);
+  should (err >= 0) otherwise {
+    return err;
+  }
+  ret += err;
+  return ret;
+}
+
+
+ssize_t serialize_strv (struct Serializer *serdes, char * const *data) {
+  const unsigned char array = MESSAGE_ARRAY;
+  ssize_t ret = Serializer_write(serdes, &array, sizeof(array));
+  should (ret >= 0) otherwise {
+    return ret;
+  }
+
+  for (int i = 0; data[i] != NULL; i++) {
+    ssize_t err = serialize_string(serdes, data[i]);
+    should (err >= 0) otherwise {
+      return err;
+    }
+    ret += err;
+  }
+
+  ssize_t err = serialize_end(serdes);
+  should (err >= 0) otherwise {
+    return err;
+  }
+  ret += err;
+
+  return ret;
 }
 
 
 void *deserialize (struct Serializer *serdes, void *buf, size_t size, size_t *read) {
   bool buf_is_null = buf == NULL;
-  bool buf_too_short = false;
-
-  Serializer__size_t len_to_read;
-  should (serdes->read(&len_to_read, sizeof(len_to_read), 1, serdes->istream) == sizeof(len_to_read)) otherwise {
-    // error: wrong format
-    return NULL;
-  }
-  should (len_to_read <= Hookfs_MAX_TOKEN_LEN) otherwise {
-    // error: too long
-    return NULL;
-  }
-  should (!buf_is_null && len_to_read <= size) otherwise {
-    // warning: buf too short
-    buf = alloca(len_to_read);
-  }
 
   if (buf_is_null) {
-    buf = malloc(len_to_read);
+    buf = malloc(size);
     should (buf != NULL) otherwise {
       // error: memory low
       return NULL;
     }
   }
-  size_t data_read = serdes->read(buf, 1, len_to_read, serdes->istream);
-  should (data_read == len_to_read) otherwise {
+
+  ssize_t data_read = Serializer_read(serdes, buf, size);
+  if (read != NULL) {
+    *read = data_read;
+  }
+
+  should (data_read == size) otherwise {
     // error: length mismatch
     if (buf_is_null) {
       free(buf);
     }
     return NULL;
   }
-
-  if (read != NULL) {
-    *read = data_read;
-  }
-  if (buf_too_short) {
-    return NULL;
-  }
   return buf;
-}
-
-
-char *deserialize_string (struct Serializer *serdes, char *buf, size_t size, size_t *read) {
-  size_t read_;
-  char *ret = deserialize(serdes, buf, size - 1, &read_);
-  should (ret != NULL) otherwise return NULL;
-  ret[read_] = '\0';
-  if (read != NULL) {
-    *read = read_;
-  }
-  return ret;
 }

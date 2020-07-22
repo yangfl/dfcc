@@ -40,7 +40,7 @@ int Socket_init (struct Socket *sock, const char *path) {
     return 1;
   }
 
-  sock->fd = socket(PF_UNIX, SOCK_SEQPACKET, 0);
+  sock->fd = socket(PF_UNIX, SOCK_STREAM, 0);
   should (sock->fd >= 0) otherwise {
     perror("sock");
     return 1;

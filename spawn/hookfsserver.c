@@ -161,7 +161,7 @@ int HookFsServer_init (
       server->socket_path, -1, G_UNIX_SOCKET_ADDRESS_ABSTRACT);
     bool err = g_socket_listener_add_address(
         G_SOCKET_LISTENER(server->service), address,
-        G_SOCKET_TYPE_SEQPACKET, G_SOCKET_PROTOCOL_DEFAULT, NULL, NULL, error);
+        G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT, NULL, NULL, error);
     g_object_unref(address);
     if (!err) {
       ret = 1;

@@ -20,8 +20,7 @@ CFLAGS += -fms-extensions -fPIC
 LDFLAGS += -shared -ldl -Wl,-z,defs -lpthread
 
 SOURCES := \
-	hookfs.c serializer.c simpleiostream.c socket.c \
-	../common/tinyglib.c
+	hookfs.c serializer.c socket.c
 OBJS := $(SOURCES:.c=.o)
 PREREQUISITES := $(SOURCES:.c=.d)
 
