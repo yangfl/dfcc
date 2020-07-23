@@ -16,27 +16,27 @@ gboolean ServerContext__housekeep (gpointer user_data) {
 
   g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_DEBUG, "Do housekeep");
 
-  g_rw_lock_writer_lock(&server_housekeeping_ctx->server_ctx->session_table.rwlock);
-  SessionTable_clean(
-    &server_housekeeping_ctx->server_ctx->session_table,
+  g_rw_lock_writer_lock(&server_housekeeping_ctx->server_ctx->session_manager.rwlock);
+  SessionManager_clean(
+    &server_housekeeping_ctx->server_ctx->session_manager,
     server_housekeeping_ctx->session_timeout);
   g_rw_lock_writer_unlock(
-    &server_housekeeping_ctx->server_ctx->session_table.rwlock);
+    &server_housekeeping_ctx->server_ctx->session_manager.rwlock);
 
   return G_SOURCE_CONTINUE;
 }
 
 
 void ServerContext_destroy (struct ServerContext *server_ctx) {
-  SessionTable_destroy(&server_ctx->session_table);
+  SessionManager_destroy(&server_ctx->session_manager);
 }
 
 
 int ServerContext_init (
     struct ServerContext *server_ctx, SoupServer *server,
     struct Config *config, GError **error) {
-  return_if_fail(SessionTable_init(
-    &server_ctx->session_table, config->jobs, config->prgpath, config->hookfs,
+  return_if_fail(SessionManager_init(
+    &server_ctx->session_manager, config->jobs, config->prgpath, config->hookfs,
     HOOKFS_SOCKET_PATH, config->cache_dir, config->no_verify_cache, error
   ) == 0) 1;
   server_ctx->server = server;

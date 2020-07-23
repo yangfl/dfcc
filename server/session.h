@@ -74,58 +74,58 @@ void Session_free (void *session);
  */
 int Session_init (
   struct Session *session, SessionID sid,
-  struct HookedProcessController *controller);
+  struct HookedProcessGroupManager *manager);
 
 
 /**
  * @ingroup Server
- * @extends HookedProcessController
+ * @extends HookedProcessGroupManager
  * @brief Contains the information of all Session.
  */
-struct SessionTable {
-  struct HookedProcessController;
+struct SessionManager {
+  struct HookedProcessGroupManager;
 };
 
 
 /**
- * @memberof SessionTable
+ * @memberof SessionManager
  * @brief Cleans inactive sessions.
  *
- * @param session_table a SessionTable
+ * @param session_manager a SessionManager
  * @param timeout time after which a session is considered unused
  * @return the number of sessions removed
  */
-unsigned int SessionTable_clean (
-  struct SessionTable *session_table, unsigned int timeout);
+unsigned int SessionManager_clean (
+  struct SessionManager *session_manager, unsigned int timeout);
 /**
- * @memberof SessionTable
- * @brief Looks up a SessionID in a SessionTable.
+ * @memberof SessionManager
+ * @brief Looks up a SessionID in a SessionManager.
  *
- * If the SessionID does not exist in the SessionTable, a Session is
+ * If the SessionID does not exist in the SessionManager, a Session is
  * automatically created with the given `sid`.
  *
- * @param session_table a SessionTable
+ * @param session_manager a SessionManager
  * @param sid the SessionID to look up
  * @return the associated Session [transfer-none]
  */
-struct Session *SessionTable_get (
-  struct SessionTable *session_table, SessionID sid);
+struct Session *SessionManager_get (
+  struct SessionManager *session_manager, SessionID sid);
 /**
- * @memberof SessionTable
- * @brief Frees associated resources of a SessionTable.
+ * @memberof SessionManager
+ * @brief Frees associated resources of a SessionManager.
  *
- * @param session_table a SessionTable
+ * @param session_manager a SessionManager
  */
-void SessionTable_destroy (struct SessionTable *session_table);
+void SessionManager_destroy (struct SessionManager *session_manager);
 /**
- * @memberof SessionTable
- * @brief Initializes a SessionTable.
+ * @memberof SessionManager
+ * @brief Initializes a SessionManager.
  *
- * @param session_table a SessionTable
+ * @param session_manager a SessionManager
  * @return 0 if success, otherwize nonzero
  */
-int SessionTable_init (
-  struct SessionTable *session_table, unsigned int jobs,
+int SessionManager_init (
+  struct SessionManager *session_manager, unsigned int jobs,
   const char *selfpath, const char *hookfs, const char *socket_path,
   const char *cache_dir, bool no_verify_cache, GError **error);
 

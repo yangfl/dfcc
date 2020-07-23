@@ -15,12 +15,14 @@ void Server_handle_upload (
   SOUP_HANDLER_MIDDLEWARE(Server_handle_upload, true, true);
 
   GError *error = NULL;
-  struct FileEntry *entry = Cache_index_buf(
-    &server_ctx->session_table.cache, msg->request_body->data,
+  struct CacheEntry *entry = Cache_index_buf(
+    &server_ctx->session_manager.cache, msg->request_body->data,
     msg->request_body->length, &error);
   should (error == NULL) otherwise {
-    soup_xmlrpc_message_set_fault(msg, 1, "err");
+    soup_xmlrpc_message_set_fault(msg, 1, "Cannot save file: %s", error->message);
+    return;
   }
+
   soup_xmlrpc_message_set_response_e(msg, g_variant_new(
     DFCC_RPC_UPLOAD_RESPONSE_SIGNATURE,
     msg->request_body->length, entry->hash), DFCC_SERVER_NAME);

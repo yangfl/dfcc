@@ -7,6 +7,7 @@
 #include <glib.h>
 #include <xxhash.h>
 
+#include "version.h"
 #include "common/hexstring.h"
 #include "common/macro.h"
 
@@ -114,6 +115,7 @@ inline FileHash FileHash_from_string (const char *s) {
 inline FileHash FileHash_from_buf (const void* buf, size_t size) {
   FileHash hash = XXH64(buf, size, 0);
   if unlikely (hash == 0) {
+    g_log(DFCC_NAME, G_LOG_LEVEL_WARNING, "hash is 0");
     hash = 1;
   }
   return hash;

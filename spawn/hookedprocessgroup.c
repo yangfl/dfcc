@@ -9,70 +9,70 @@
 #include "hookedprocessgroup.h"
 
 
-struct HookedProcessGroup *HookedProcessController_lookup (
-    struct HookedProcessController *controller, HookedProcessGroupID hgid) {
+struct HookedProcessGroup *HookedProcessGroupManager_lookup (
+    struct HookedProcessGroupManager *manager, HookedProcessGroupID hgid) {
   GRWLockReaderLocker *locker =
-    g_rw_lock_reader_locker_new(&controller->rwlock);
+    g_rw_lock_reader_locker_new(&manager->rwlock);
   struct HookedProcessGroup *group = g_hash_table_lookup(
-    controller->table, &hgid);
+    manager->table, &hgid);
   g_rw_lock_reader_locker_free(locker);
   return group;
 }
 
 
 /**
- * @memberof HookedProcessController
+ * @memberof HookedProcessGroupManager
  * @brief Looks up a job with `hgid` and `pid`.
  *
- * @param controller_ a HookedProcessController
+ * @param manager_ a HookedProcessGroupManager
  * @param gpid a HookedProcessGroupID
  * @param pid a GPid
  * @return a HookedProcess [nullable]
  */
-static struct HookedProcess *HookedProcessController_resolve (
-    void *controller_, HookedProcessGroupID hgid, GPid pid) {
-  struct HookedProcessController *controller =
-    (struct HookedProcessController *) controller_;
-  struct HookedProcessGroup *group = HookedProcessController_lookup(
-    controller, hgid);
+static struct HookedProcess *HookedProcessGroupManager_resolve (
+    void *manager_, HookedProcessGroupID hgid, GPid pid) {
+  struct HookedProcessGroupManager *manager =
+    (struct HookedProcessGroupManager *) manager_;
+  struct HookedProcessGroup *group = HookedProcessGroupManager_lookup(
+    manager, hgid);
   return_if_fail(group != NULL) NULL;
   return HookedProcessGroup_lookup(group, pid);
 }
 
 
-void HookedProcessController_destroy (
-    struct HookedProcessController *controller) {
-  HookFsServer_destroy((struct HookFsServer *) controller);
-  Cache_destroy(&controller->cache);
-  g_rw_lock_writer_lock(&controller->rwlock);
-  g_hash_table_destroy(controller->table);
-  g_rw_lock_writer_unlock(&controller->rwlock);
-  g_rw_lock_clear(&controller->rwlock);
+void HookedProcessGroupManager_destroy (
+    struct HookedProcessGroupManager *manager) {
+  HookFsServer_destroy((struct HookFsServer *) manager);
+  Cache_destroy(&manager->cache);
+  g_rw_lock_writer_lock(&manager->rwlock);
+  g_hash_table_destroy(manager->table);
+  g_rw_lock_writer_unlock(&manager->rwlock);
+  g_rw_lock_clear(&manager->rwlock);
 }
 
 
-int HookedProcessController_init (
-    struct HookedProcessController *controller, unsigned int jobs,
+int HookedProcessGroupManager_init (
+    struct HookedProcessGroupManager *manager, unsigned int jobs,
     const char *selfpath, const char *hookfs, const char *socket_path,
     const char *cache_dir, bool no_verify_cache, GError **error) {
   return_if_fail(HookFsServer_init(
-    (struct HookFsServer *) controller, socket_path,
-    NULL, HookedProcessController_resolve, error
+    (struct HookFsServer *) manager, socket_path,
+    NULL, HookedProcessGroupManager_resolve, error
   ) == 0) 1;
   should (Cache_init(
-      &controller->cache, cache_dir, no_verify_cache) == 0) otherwise {
-    HookFsServer_destroy((struct HookFsServer *) controller);
+      &manager->cache, cache_dir, no_verify_cache) == 0) otherwise {
+    HookFsServer_destroy((struct HookFsServer *) manager);
     return 1;
   }
 
-  controller->table = g_hash_table_new_full(
+  manager->table = g_hash_table_new_full(
     g_int_hash, g_int_equal, NULL, HookedProcessGroup_free);
-  g_rw_lock_init(&controller->rwlock);
+  g_rw_lock_init(&manager->rwlock);
 
-  controller->n_available = jobs;
-  controller->debug = 1; // temp
-  controller->selfpath = selfpath;
-  controller->hookfs = hookfs;
+  manager->n_available = jobs;
+  manager->debug = 1; // temp
+  manager->selfpath = selfpath;
+  manager->hookfs = hookfs;
   return 0;
 }
 
@@ -90,7 +90,7 @@ struct HookedProcess *HookedProcessGroup_lookup (
 
 void HookedProcessGroup_onexit (struct Process *p_) {
   struct HookedProcess *p = (struct HookedProcess *) p_;
-  p->group->controller->n_available++;
+  p->group->manager->n_available++;
   if (p->onexit_hooked != NULL) {
     p->onexit_hooked(p);
   }
@@ -110,13 +110,13 @@ static void HookedProcessGroup_insert (
     bool pending) {
   should (p != NULL) otherwise {
     if (pending) {
-      group->controller->n_available++;
+      group->manager->n_available++;
     }
     return;
   }
 
   if (!pending) {
-    group->controller->n_available--;
+    group->manager->n_available--;
   }
 
   g_rw_lock_writer_lock(&group->rwlock);
@@ -126,7 +126,7 @@ static void HookedProcessGroup_insert (
 
 
 bool HookedProcessGroup_reserve (struct HookedProcessGroup *group) {
-  return count_dec(&group->controller->n_available);
+  return count_dec(&group->manager->n_available);
 }
 
 
@@ -168,7 +168,7 @@ void HookedProcessGroup_free (void *group) {
 
 int HookedProcessGroup_init (
     struct HookedProcessGroup *group, HookedProcessGroupID hgid,
-    struct HookedProcessController *controller) {
+    struct HookedProcessGroupManager *manager) {
   return_if_fail(RemoteFileIndex_init(&group->file_index) == 0) 1;
 
   group->table = g_hash_table_new_full(
@@ -177,7 +177,7 @@ int HookedProcessGroup_init (
 
   group->hgid = hgid;
   snprintf(group->s_hgid, sizeof(group->s_hgid), "%x", group->hgid);
-  group->controller = controller;
+  group->manager = manager;
   group->destructor = (void (*) (void *)) HookedProcessGroup_destroy;
   return 0;
 }

@@ -27,9 +27,9 @@ void Session_free (void *session) {
 
 int Session_init (
     struct Session *session, SessionID sid,
-    struct HookedProcessController *controller) {
+    struct HookedProcessGroupManager *manager) {
   return_if_fail(HookedProcessGroup_init(
-    (struct HookedProcessGroup *) session, sid, controller) == 0) 1;
+    (struct HookedProcessGroup *) session, sid, manager) == 0) 1;
   Session_touch(session);
   session->rc = 0;
   session->destructor = (void (*) (void *)) Session_destroy;
@@ -37,16 +37,16 @@ int Session_init (
 }
 
 
-struct SessionTable_clean_foreach_remove_ctx {
+struct SessionManager_clean_foreach_remove_ctx {
   time_t now;
   unsigned int timeout;
 };
 
 
-static gboolean SessionTable_clean_foreach_remove_cb (
+static gboolean SessionManager_clean_foreach_remove_cb (
     gpointer key, gpointer value, gpointer user_data) {
-  struct SessionTable_clean_foreach_remove_ctx *ctx =
-    (struct SessionTable_clean_foreach_remove_ctx *) user_data;
+  struct SessionManager_clean_foreach_remove_ctx *ctx =
+    (struct SessionManager_clean_foreach_remove_ctx *) user_data;
   struct Session *session = (struct Session *) value;
   gboolean clean =
     session->rc == 0 && ctx->now - session->last_active > ctx->timeout;
@@ -57,53 +57,53 @@ static gboolean SessionTable_clean_foreach_remove_cb (
 }
 
 
-unsigned int SessionTable_clean (
-    struct SessionTable *session_table, unsigned int timeout) {
-  struct SessionTable_clean_foreach_remove_ctx ctx = {
+unsigned int SessionManager_clean (
+    struct SessionManager *session_manager, unsigned int timeout) {
+  struct SessionManager_clean_foreach_remove_ctx ctx = {
     .now = time(NULL),
     .timeout = timeout
   };
   return g_hash_table_foreach_remove(
-    session_table->table, SessionTable_clean_foreach_remove_cb, &ctx);
+    session_manager->table, SessionManager_clean_foreach_remove_cb, &ctx);
 }
 
 
-struct Session *SessionTable_get (
-    struct SessionTable *session_table, SessionID sid) {
+struct Session *SessionManager_get (
+    struct SessionManager *session_manager, SessionID sid) {
   return_if_fail(SessionID_vaild(sid)) NULL;
 
-  struct Session *session = (struct Session *) HookedProcessController_lookup(
-    (struct HookedProcessController *) session_table, sid);
+  struct Session *session = (struct Session *) HookedProcessGroupManager_lookup(
+    (struct HookedProcessGroupManager *) session_manager, sid);
   if unlikely (session == NULL && SessionID_vaild(sid)) {
     g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_DEBUG, "Create session %x", sid);
     session = g_malloc(sizeof(struct Session));
     should (Session_init(
-        session, sid, (struct HookedProcessController *) session_table
+        session, sid, (struct HookedProcessGroupManager *) session_manager
     ) == 0) otherwise {
       g_free(session);
       return NULL;
     }
-    g_rw_lock_writer_lock(&session_table->rwlock);
-    g_hash_table_insert(session_table->table, &session->hgid, session);
-    g_rw_lock_writer_unlock(&session_table->rwlock);
+    g_rw_lock_writer_lock(&session_manager->rwlock);
+    g_hash_table_insert(session_manager->table, &session->hgid, session);
+    g_rw_lock_writer_unlock(&session_manager->rwlock);
   }
 
   return session;
 }
 
 
-void SessionTable_destroy (struct SessionTable *session_table) {
-  HookedProcessController_destroy(
-    (struct HookedProcessController *) session_table);
+void SessionManager_destroy (struct SessionManager *session_manager) {
+  HookedProcessGroupManager_destroy(
+    (struct HookedProcessGroupManager *) session_manager);
 }
 
 
-int SessionTable_init (
-    struct SessionTable *session_table, unsigned int jobs,
+int SessionManager_init (
+    struct SessionManager *session_manager, unsigned int jobs,
     const char *selfpath, const char *hookfs, const char *socket_path,
     const char *cache_dir, bool no_verify_cache, GError **error) {
-  return_if_fail(HookedProcessController_init(
-    (struct HookedProcessController *) session_table, jobs, selfpath,
+  return_if_fail(HookedProcessGroupManager_init(
+    (struct HookedProcessGroupManager *) session_manager, jobs, selfpath,
     hookfs, socket_path, cache_dir, no_verify_cache, error
   ) == 0) 1;
   return 0;

@@ -20,7 +20,7 @@ BEGIN_C_DECLS
  * @ingroup Spawn
  * @brief Contains the information of HookedProcessGroup.
  */
-struct HookedProcessController {
+struct HookedProcessGroupManager {
   struct HookFsServer ANON_MEMBER;
   /// Hash table mapping HookedProcessGroupID to HookedProcessGroup.
   GHashTable *table;
@@ -41,39 +41,39 @@ struct HookedProcessController {
   cnd_t cond;
   mtx_t cond_mtx;
 
-  void (*onmissing) (struct HookedProcessController *, void *, char *);
+  void (*onmissing) (struct HookedProcessGroupManager *, void *, char *);
   void *onmissing_userdata;
 };
 
 
 /**
- * @memberof HookedProcessController
- * @brief Looks up a HookedProcessGroup in a HookedProcessController.
+ * @memberof HookedProcessGroupManager
+ * @brief Looks up a HookedProcessGroup in a HookedProcessGroupManager.
  *
- * @param controller a HookedProcessController
+ * @param manager a HookedProcessGroupManager
  * @param hgid a HookedProcessGroupID
  * @return HookedProcessGroup [nullable]
  */
-struct HookedProcessGroup *HookedProcessController_lookup (
-  struct HookedProcessController *controller, HookedProcessGroupID hgid);
+struct HookedProcessGroup *HookedProcessGroupManager_lookup (
+  struct HookedProcessGroupManager *manager, HookedProcessGroupID hgid);
 /**
- * @memberof HookedProcessController
- * @brief Frees associated resources of a HookedProcessController.
+ * @memberof HookedProcessGroupManager
+ * @brief Frees associated resources of a HookedProcessGroupManager.
  *
- * @param controller a HookedProcessController
+ * @param manager a HookedProcessGroupManager
  */
-void HookedProcessController_destroy (
-  struct HookedProcessController *controller);
+void HookedProcessGroupManager_destroy (
+  struct HookedProcessGroupManager *manager);
 /**
- * @memberof HookedProcessController
- * @brief Initializes a HookedProcessController.
+ * @memberof HookedProcessGroupManager
+ * @brief Initializes a HookedProcessGroupManager.
  *
- * @param controller a HookedProcessController
+ * @param manager a HookedProcessGroupManager
  * @param max_njob maximum number of simultaneously jobs
  * @return 0 if success, otherwize nonzero
  */
-int HookedProcessController_init (
-  struct HookedProcessController *controller, unsigned int jobs,
+int HookedProcessGroupManager_init (
+  struct HookedProcessGroupManager *manager, unsigned int jobs,
   const char *selfpath, const char *hookfs, const char *socket_path,
   const char *cache_dir, bool no_verify_cache, GError **error);
 
@@ -92,7 +92,7 @@ struct HookedProcessGroup {
   /// Group ID string.
   char s_hgid[2 * sizeof(HookedProcessGroupID) + 1];
   /// Meta table.
-  struct HookedProcessController *controller;
+  struct HookedProcessGroupManager *manager;
   /// Files of the remote client.
   struct RemoteFileIndex file_index;
   /// Virtual destructor.
@@ -177,7 +177,7 @@ void HookedProcessGroup_free (void *group);
  */
 int HookedProcessGroup_init (
   struct HookedProcessGroup *group, HookedProcessGroupID hgid,
-  struct HookedProcessController *controller);
+  struct HookedProcessGroupManager *manager);
 
 
 END_C_DECLS

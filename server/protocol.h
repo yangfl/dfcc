@@ -41,8 +41,5 @@
 // (size hash)
 #define DFCC_RPC_UPLOAD_RESPONSE_SIGNATURE "(tt)"
 
-// [missing_path]
-#define DFCC_REQUEST_RPC_RESPONSE_SIGNATURE "as"
-
 
 #endif /* DFCC_PROTOCOL_H */

@@ -66,36 +66,36 @@ int HookedProcess_init (
     HookedProcessExitCallback onexit, void *userdata,
     struct HookedProcessGroup *group, GError **error) {
   should (g_file_test(
-      group->controller->hookfs, G_FILE_TEST_EXISTS)) otherwise {
+      group->manager->hookfs, G_FILE_TEST_EXISTS)) otherwise {
     g_set_error(error, DFCC_SPAWN_ERROR, 0,
-                "HookFs lib '%s' gone", group->controller->hookfs);
+                "HookFs lib '%s' gone", group->manager->hookfs);
     return 1;
   }
   p->group = group;
 
   gchar **envp_hooked = g_strdupv(envp);
   char *ld_preload;
-  if (group->controller->debug) {
+  if (group->manager->debug) {
     ld_preload = g_strjoin(
-      ":", "libSegFault.so", group->controller->hookfs,
+      ":", "libSegFault.so", group->manager->hookfs,
       g_environ_getenv(envp_hooked, "LD_PRELOAD"), NULL);
   } else {
     ld_preload = g_strjoin(
-      ":", group->controller->hookfs,
+      ":", group->manager->hookfs,
       g_environ_getenv(envp_hooked, "LD_PRELOAD"), NULL);
   }
   envp_hooked = g_environ_setenv(envp_hooked, "LD_PRELOAD", ld_preload, TRUE);
   g_free(ld_preload);
   envp_hooked = g_environ_setenv(envp_hooked, "HOOKFS_NS", group->s_hgid, TRUE);
   envp_hooked = g_environ_setenv(envp_hooked, "HOOKFS_SOCK_PATH",
-                                 group->controller->socket_path, TRUE);
+                                 group->manager->socket_path, TRUE);
 
   p->onexit_hooked = onexit;
   p->outputs = g_hash_table_new_full(
     g_str_hash, g_str_equal, NULL, HookedProcessOutput_free);
 
   int ret = Process_init(
-    (struct Process *) p, argv, envp_hooked, group->controller->selfpath,
+    (struct Process *) p, argv, envp_hooked, group->manager->selfpath,
     HookedProcessGroup_onexit, userdata, error);
   g_strfreev(envp_hooked);
   return_if_fail(ret == 0) ret;

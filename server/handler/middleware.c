@@ -68,7 +68,7 @@ struct Session *Server_handle_middleware (
   g_strfreev(cookies);
 
   return SessionID_vaild(sid) ?
-    SessionTable_get(&server_ctx->session_table, sid) : NULL;
+    SessionManager_get(&server_ctx->session_manager, sid) : NULL;
 }
 
 

@@ -26,7 +26,7 @@ void Server_handle_info (
   g_variant_builder_add(&builder, "{sv}", "Jobs",
                         g_variant_new_int32(server_ctx->config->jobs));
   g_variant_builder_add(&builder, "{sv}", "Current-jobs", g_variant_new_int32(
-    server_ctx->config->jobs - server_ctx->session_table.n_available));
+    server_ctx->config->jobs - server_ctx->session_manager.n_available));
   soup_xmlrpc_message_set_response_e(
     msg, g_variant_builder_end(&builder), DFCC_SERVER_NAME);
 }

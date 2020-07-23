@@ -25,7 +25,7 @@ typedef HookedProcessGroupID SessionID;
 #define SessionID_INVAILD 0
 
 
-struct SessionTable;
+struct SessionManager;
 
 
 #endif /* DFCC_SERVER_SESSIONID_H */

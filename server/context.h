@@ -20,8 +20,8 @@ struct ServerContext {
   SoupServer *server;
   /// Config for the server.
   struct Config *config;
-  /// Session table.
-  struct SessionTable session_table;
+  /// Session manager.
+  struct SessionManager session_manager;
 };
 
 
