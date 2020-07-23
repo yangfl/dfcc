@@ -9,6 +9,8 @@
 #include "spawn/hookedprocessgroup.h"
 #include "spawn/process.h"
 
+BEGIN_C_DECLS
+
 
 /**
  * @ingroup Spawn
@@ -67,7 +69,7 @@ typedef void (*HookedProcessExitCallback) (struct HookedProcess *);
  * @brief Contains the information of a process with hookfs preloaded.
  */
 struct HookedProcess {
-  struct Process;
+  struct Process ANON_MEMBER;
   struct HookedProcessGroup *group;
   GHashTable *outputs;
   HookedProcessExitCallback onexit_hooked;
@@ -132,5 +134,7 @@ struct HookedProcess *HookedProcess_new (
   gchar **argv, gchar **envp, HookedProcessExitCallback onexit, void *userdata,
   struct HookedProcessGroup *group, GError **error);
 
+
+END_C_DECLS
 
 #endif /* DFCC_SPAWN_HOOKED_SUBPROCESS_H */

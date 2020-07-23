@@ -40,6 +40,6 @@ SessionID Client__get_session_id () {
   g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_WARNING, "Generateing random session ID");
   sid = g_random_int();
 end:
-  g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG, "My session ID: %x", sid);
+  g_log(DFCC_CLIENT_NAME, G_LOG_LEVEL_DEBUG, "Client session ID: %x", sid);
   return sid;
 }

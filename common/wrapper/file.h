@@ -37,7 +37,7 @@ WRAP_IO_GERROR(
   (fd, buf, count), >= 0, "Failed to read")
 WRAP_IO_GERROR(
   ssize_t, write, (int fd, const void *buf, size_t count, GError **error),
-  (fd, buf, count), >= 0, "Failed to write")
+  (fd, buf, count), == count, "Failed to write")
 WRAP_IO_GERROR(
   FILE *, g_fopen, (
     const gchar *filename, const gchar *mode, GError **error),
@@ -45,7 +45,7 @@ WRAP_IO_GERROR(
 WRAP_IO_GERROR(
   size_t, fwrite, (
     const void *ptr, size_t size, size_t nmemb, FILE *stream, GError **error),
-  (ptr, size, nmemb, stream), == 0, "Failed to fwrite")
+  (ptr, size, nmemb, stream), == size * nmemb, "Failed to fwrite")
 
 #undef WRAP_IO_GERROR
 

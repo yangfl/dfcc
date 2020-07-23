@@ -1,5 +1,6 @@
 #ifndef MACRO_H
 #define MACRO_H
+
 /**
  * @defgroup Common Common
  * @brief Helper functions, data structures and macros.
@@ -105,6 +106,7 @@
 
 #include "controlflow.h"
 
+
 /**
  * @brief Calculates the maximum of `a` and `b`.
  *
@@ -129,8 +131,12 @@
     _a < _b ? _a : _b; })
 
 
+#include "cdecls.h"
+
+
 /**
  * @}
  * @}
  */
+
 #endif /* MACRO_H */

@@ -13,12 +13,12 @@ extern inline ssize_t Serializer_read (struct Serializer *serdes, void *buf, siz
 extern inline ssize_t serialize_string (struct Serializer *serdes, const char *str);
 extern inline ssize_t serialize_end (struct Serializer *serdes);
 extern inline char deserialize_next (struct Serializer *serdes, int *err);
-extern inline ssize_t deserialize_length (struct Serializer *serdes, unsigned char type);
+extern inline ssize_t deserialize_length (struct Serializer *serdes, uint8_t type);
 extern inline void *deserialize_new (struct Serializer *serdes, size_t size, size_t *read);
 
 
 ssize_t serialize_numerical (struct Serializer *serdes, uint64_t num) {
-  const unsigned char numerical = MESSAGE_NUMERICAL;
+  const uint8_t numerical = MESSAGE_NUMERICAL;
   ssize_t ret = Serializer_write(serdes, &numerical, sizeof(numerical));
   should (ret >= 0) otherwise {
     return ret;
@@ -32,7 +32,7 @@ ssize_t serialize_numerical (struct Serializer *serdes, uint64_t num) {
 
 
 ssize_t serialize_string_len (struct Serializer *serdes, const char *str, uint64_t len) {
-  const unsigned char string_ = MESSAGE_STRING;
+  const uint8_t string_ = MESSAGE_STRING;
   ssize_t ret = Serializer_write(serdes, &string_, sizeof(string_));
   should (ret >= 0) otherwise {
     return ret;
@@ -52,7 +52,7 @@ ssize_t serialize_string_len (struct Serializer *serdes, const char *str, uint64
 
 
 ssize_t serialize_strv (struct Serializer *serdes, char * const *data) {
-  const unsigned char array = MESSAGE_ARRAY;
+  const uint8_t array = MESSAGE_ARRAY;
   ssize_t ret = Serializer_write(serdes, &array, sizeof(array));
   should (ret >= 0) otherwise {
     return ret;

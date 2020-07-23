@@ -1,11 +1,16 @@
 #ifndef HEXSTRING_H
 #define HEXSTRING_H
+
+#include "cdecls.h"
+
 /**
  * @ingroup Common
  * @defgroup Hex Hex String
  * @brief Convert between raw data and their hex representation
  * @{
  */
+
+BEGIN_C_DECLS
 
 
 /**
@@ -32,13 +37,15 @@ inline char chr2hex (unsigned char c) {
  */
 inline void __attribute__((nonnull)) buf2hex (char *dst, const void *src,
                                               unsigned int len) {
-  const unsigned char *src_ = src;
+  const unsigned char *src_ = (const unsigned char *) src;
   for (unsigned int i = 0; i < len; i++) {
     dst[2 * i] = chr2hex(src_[i] >> 4);
     dst[2 * i + 1] = chr2hex(src_[i] & 0xF);
   }
 }
 
+
+END_C_DECLS
 
 /**@}*/
 

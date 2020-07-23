@@ -7,7 +7,9 @@
  * @{
  */
 
-#define not(expr) (!(expr))
+#ifndef __cplusplus
+# define not(expr) (!(expr))
+#endif
 
 #define return_if(expr) if (expr) return
 #define return_if_not(expr) if (!(expr)) return

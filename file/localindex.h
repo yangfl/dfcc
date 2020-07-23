@@ -3,6 +3,10 @@
 
 #include <gmodule.h>
 
+#include "common/cdecls.h"
+
+BEGIN_C_DECLS
+
 
 //! @ingroup File
 struct LocalFileIndex {
@@ -12,7 +16,7 @@ struct LocalFileIndex {
 
 //! @memberof LocalFileIndex
 struct FileEntry *LocalFileIndex_get (
-    GHashTable *index, const char* path, GError **error);
+  struct LocalFileIndex *index, const char* path, GError **error);
 /**
  * @memberof LocalFileIndex
  * @brief Frees associated resources of a LocalFileIndex.
@@ -29,5 +33,7 @@ void LocalFileIndex_destroy (struct LocalFileIndex *index);
  */
 int LocalFileIndex_init (struct LocalFileIndex *index);
 
+
+END_C_DECLS
 
 #endif /* DFCC_FILE_LOCAL_INDEX_H */

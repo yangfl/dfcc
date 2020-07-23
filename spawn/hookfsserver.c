@@ -18,22 +18,6 @@
 #include "hookfsserver.h"
 
 
-static bool G_GNUC_UNUSED HookFsServer__remove_sockfile (const char *socket_path) {
-  if (!g_file_test(socket_path, G_FILE_TEST_EXISTS)) {
-    return true;
-  }
-
-  GStatBuf sb;
-  should (g_stat(socket_path, &sb) == 0) otherwise return false;
-
-  if (S_ISSOCK(sb.st_mode)) {
-    g_unlink(socket_path);
-    return true;
-  }
-  return false;
-}
-
-
 void HookFsServer_destroy (struct HookFsServer *server) {
   g_object_unref(server->service);
   g_free(server->socket_path);
@@ -45,7 +29,20 @@ struct HookFsServerConnection {
   GSocketConnection *connection;
   struct HookFsServer *server;
   struct HookedProcess *p;
-  char message[Hookfs_MAX_PACKET_LEN];
+
+  GPtrArray *tokens;
+
+  GVariantBuilder builder;
+  enum {
+    CONNECTION_GOT_TYPE,
+    CONNECTION_GOT_LENGTH,
+    CONNECTION_GOT_CONTENT
+  } phase;
+  bool build_array;
+
+  uint8_t type;
+  void *buf;
+  uint64_t num;
 };
 
 
@@ -66,52 +63,109 @@ static void HookFsServerConnection_message_receive_cb (
     goto close;
   }
 
-  struct SimpleString *tokens[Hookfs_MAX_TOKENS];
-  int tokens_len = 0;
-  for (int i = 0; i < count;) {
-    tokens[tokens_len] = (struct SimpleString *) (conn->message + i);
-    if (tokens[tokens_len]->len == 0) {
-      break;
-    }
-    i += SIMPLE_STRING_SIZEOF(tokens[tokens_len]);
-    tokens_len++;
-  }
+  switch (conn->phase) {
+    case CONNECTION_GOT_TYPE:
+      switch (conn->type) {
+        case MESSAGE_END:
+          if (conn->build_array) {
+            // array end
+            g_ptr_array_add(conn->tokens, g_variant_builder_end(&conn->builder));
+            conn->build_array = false;
+          } else {
+            // message end
+            const char *func_name = g_variant_get_string(conn->tokens->pdata[0], NULL);
+            if (func_name[0] == '-') {
+              // special control message
+              should (conn->tokens->len > 1) otherwise {
+                g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING,
+                      "Too few arguements for '%s'", func_name);
+                goto close;
+              }
+              const char *func_arg1 = g_variant_get_string(conn->tokens->pdata[1], NULL);
 
-  if unlikely (tokens_len == 0) {
-    goto next;
-  }
-
-  const char *func_name = tokens[0]->str;
-  if (func_name[0] == '-') {
-    should (tokens_len > 1) otherwise {
-      g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING,
-            "Too few arguements for '%s'", func_name);
-      goto close;
-    }
-    if (strcmp(func_name, "-id") == 0) {
-      char *func_arg1_end;
-      HookedProcessGroupID hgid = strtoull(tokens[1]->str, &func_arg1_end, 16);
-      should (*func_arg1_end == '\0') otherwise {
-        g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING,
-              "Cannot parse HookFs group id: %s", tokens[1]->str);
-        goto close;
+              if (strcmp(func_name, "-id") == 0) {
+                char *func_arg1_end;
+                HookedProcessGroupID hgid = strtoull(func_arg1, &func_arg1_end, 16);
+                should (*func_arg1_end == '\0') otherwise {
+                  g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING,
+                        "Cannot parse HookFs group id: %s", func_arg1);
+                  goto close;
+                }
+                GPid pid = g_variant_get_uint64(conn->tokens->pdata[2]);
+                conn->p = conn->server->resolver(conn->server, hgid, pid);
+                should (conn->p != NULL) otherwise {
+                  g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING,
+                        "Unknown hooked process %x:%d", hgid, pid);
+                  goto close;
+                }
+                g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
+                      "Get HookFs connection from %x:%d", hgid, pid);
+              }
+            } else {
+            }
+          }
+          goto read_type;
+        case MESSAGE_ARRAY:
+          // read array content
+          g_variant_builder_init(&conn->builder, G_VARIANT_TYPE_STRING_ARRAY);
+          conn->build_array = true;
+          conn->phase = CONNECTION_GOT_TYPE;
+          goto read_num;
+        case MESSAGE_NUMERICAL:
+          // read number
+          conn->phase = CONNECTION_GOT_CONTENT;
+          goto read_num;
+        case MESSAGE_STRING:
+          // read length of string
+          conn->phase = CONNECTION_GOT_LENGTH;
+          goto read_num;
       }
-      GPid pid = *((uint32_t *) tokens[2]->str);
-      conn->p = conn->server->resolver(conn->server, hgid, pid);
-      should (conn->p != NULL) otherwise {
-        g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING,
-              "Unknown hooked process %x:%d", hgid, pid);
-        goto close;
+    case CONNECTION_GOT_LENGTH:
+      // read string
+      conn->buf = g_malloc(conn->num);
+      conn->phase = CONNECTION_GOT_CONTENT;
+      goto read_string;
+    case CONNECTION_GOT_CONTENT: {
+      GVariant *value;
+      switch (conn->type) {
+        case MESSAGE_NUMERICAL:
+          // store number
+          value = g_variant_new_uint64(conn->num);
+          break;
+        case MESSAGE_STRING:
+          // store sting
+          value = g_variant_new_take_string(conn->buf);
+          conn->buf = NULL;
+          break;
+        default:
+          break;
       }
-      g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
-            "Get HookFs connection from %x:%d", hgid, pid);
+      if (conn->build_array) {
+        g_variant_builder_add_value(&conn->builder, value);
+      } else {
+        g_variant_ref_sink(value);
+        g_ptr_array_add(conn->tokens, value);
+      }
+      conn->phase = CONNECTION_GOT_TYPE;
+      goto read_type;
     }
   }
 
-next:
-  // schedule next read
+read_type:
   g_input_stream_read_async(
-    istream, conn->message, sizeof(conn->message),
+    istream, &conn->type, sizeof(conn->type),
+    G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_receive_cb, conn);
+  return;
+
+read_num:
+  g_input_stream_read_async(
+    istream, &conn->num, sizeof(conn->num),
+    G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_receive_cb, conn);
+  return;
+
+read_string:
+  g_input_stream_read_async(
+    istream, conn->buf, conn->num,
     G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_receive_cb, conn);
   return;
 
@@ -124,6 +178,14 @@ close:
     g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
           "HookFs connection %x:%d closed", conn->p->group->hgid, conn->p->pid);
   }
+
+  if unlikely (conn->build_array) {
+    g_variant_unref(g_variant_builder_end(&conn->builder));
+  }
+  if unlikely (conn->buf != NULL) {
+    g_free(conn->buf);
+  }
+  g_ptr_array_free(conn->tokens, TRUE);
   g_object_unref(conn->connection);
   g_free(conn);
   return;
@@ -135,13 +197,13 @@ gboolean HookFsServer_incoming_callback (
     GObject *source_object, struct HookFsServer *server) {
   GInputStream *istream = g_io_stream_get_input_stream(G_IO_STREAM(connection));
 
-  struct HookFsServerConnection *conn = g_new(struct HookFsServerConnection, 1);
+  struct HookFsServerConnection *conn = g_new0(struct HookFsServerConnection, 1);
   conn->connection = g_object_ref(connection);
   conn->server = server;
-  conn->p = NULL;
+  conn->tokens = g_ptr_array_new_with_free_func((GDestroyNotify) g_variant_unref);
 
   g_input_stream_read_async(
-    istream, conn->message, sizeof(conn->message),
+    istream, &conn->type, sizeof(conn->type),
     G_PRIORITY_DEFAULT, NULL, HookFsServerConnection_message_receive_cb, conn);
   return FALSE;
 }

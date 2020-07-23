@@ -7,12 +7,12 @@
 
 
 struct FileEntry *LocalFileIndex_get (
-    GHashTable *index, const char* path, GError **error) {
+    struct LocalFileIndex *index, const char* path, GError **error) {
   GStatBuf sb;
   return_if_fail(g_stat_e(path, &sb, error) == 0) NULL;
 
   char *absolute_path = g_canonicalize_filename(path, NULL);
-  struct FileEntry *entry = g_hash_table_lookup(index, absolute_path);
+  struct FileEntry *entry = g_hash_table_lookup(index->table, absolute_path);
   bool cached = entry != NULL;
 
   if (cached) {
@@ -30,14 +30,14 @@ struct FileEntry *LocalFileIndex_get (
   int ret = FileEntry_init(entry, absolute_path, &sb, 0, error);
   should (ret == 0) otherwise {
     if (cached) {
-      g_hash_table_remove(index, absolute_path);
+      g_hash_table_remove(index->table, absolute_path);
     }
     g_free(absolute_path);
     g_free(entry);
     return NULL;
   }
 
-  g_hash_table_insert(index, entry->path, entry);
+  g_hash_table_insert(index->table, entry->path, entry);
   return entry;
 }
 

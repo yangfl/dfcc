@@ -1,32 +1,38 @@
 DEBUG = 1
 
 CPPFLAGS ?= -fdiagnostics-color=always
-CFLAGS ?= -fPIC
+CANYFLAGS ?= -fPIC
 LDFLAGS ?= -fPIE -Wl,--gc-sections
 
 CWARN ?= -Wall -Wpointer-arith -Wuninitialized -Wpedantic
-CFLAGS += $(CWARN)
+CANYFLAGS += $(CWARN)
 
 ifeq ($(DEBUG), 1)
-	CFLAGS += -g -DDEBUG
+	CANYFLAGS += -g -DDEBUG
 	LDFLAGS += -rdynamic
 else
-	CFLAGS += -Os
+	CANYFLAGS += -Os
 	LDFLAGS += -s -flto
 endif
 
 CPPFLAGS += -I. -D_DEFAULT_SOURCE
-CFLAGS += -std=c18 -fms-extensions
+CANYFLAGS += -fms-extensions
 LDFLAGS +=
 
 LIBS := glib-2.0 gio-2.0 gio-unix-2.0 libsoup-2.4 libxxhash whereami
 LIBS_CPPFLAGS := $(shell pkg-config --cflags-only-I $(LIBS))
-LIBS_CFLAGS := $(shell pkg-config --cflags-only-other $(LIBS))
+LIBS_CANYFLAGS := $(shell pkg-config --cflags-only-other $(LIBS))
 LIBS_LDFLAGS := $(shell pkg-config --libs $(LIBS)) -lpthread
 
 CPPFLAGS += $(LIBS_CPPFLAGS)
-CFLAGS += $(LIBS_CFLAGS)
+CANYFLAGS += $(LIBS_CANYFLAGS)
 LDFLAGS += $(LIBS_LDFLAGS)
+
+export CPPFLAGS
+export CANYFLAGS
+export LDFLAGS
+
+CFLAGS += $(CANYFLAGS) -std=c18
 
 SOURCES := \
 	common/broadcast.c common/hexstring.c common/morestring.c \
@@ -38,7 +44,7 @@ SOURCES := \
 		config/source/args.c config/source/default.c config/source/conffile.c \
 		config/source/mux.c \
 	\
-	file/cache.c file/entry.c file/stat.c file/hash.c \
+	file/cache.c file/cacheentry.c file/entry.c file/stat.c file/hash.c \
 	file/localindex.c file/remoteindex.c \
 	\
 	spawn/hookfsserver.c spawn/hookedprocess.c spawn/hookedprocessgroup.c \
@@ -60,12 +66,19 @@ SOURCES := \
 OBJS := $(SOURCES:.c=.o)
 PREREQUISITES := $(SOURCES:.c=.d)
 
+DFCC_OBJS := $(OBJS)
+export DFCC_OBJS
+
 OUT := out
 EXE := $(OUT)/dfcc
 
 
 .PHONY: all
 all: $(OUT) $(EXE) $(OUT)/hookfs.so
+
+.PHONY: test
+test: all
+	+$(MAKE) -C tests
 
 .PHONY: cloc
 cloc:
@@ -77,7 +90,8 @@ doc:
 
 .PHONY: clean
 clean:
-	$(MAKE) -C hookfs clean
+	+$(MAKE) -C tests clean
+	+$(MAKE) -C hookfs clean
 	rm -rf $(OUT)/
 	rm -f $(EXE) $(OBJS) $(PREREQUISITES)
 
@@ -93,7 +107,7 @@ $(EXE): $(OBJS)
 # hookfs
 .PHONY: hookfs/hookfs.so
 hookfs/hookfs.so:
-	$(MAKE) -C hookfs
+	+$(MAKE) -C hookfs
 
 # install
 $(OUT):

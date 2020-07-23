@@ -18,7 +18,6 @@
 
 #include "common/macro.h"
 #include "serializer.h"
-#include "simpleiostream.h"
 #include "socket.h"
 
 /**

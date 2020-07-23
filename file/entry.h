@@ -5,8 +5,11 @@
 
 #include <glib.h>
 
+#include "common/cdecls.h"
 #include "file/stat.h"
 #include "file/hash.h"
+
+BEGIN_C_DECLS
 
 
 /**
@@ -67,7 +70,7 @@ int FileTag_init (
  * @brief Contains the path, hash, size and modified time of a file.
  */
 struct FileEntry {
-  struct FileTag;
+  struct FileTag ANON_MEMBER;
   /// Stat of the file.
   struct FileStat stat_;
 };
@@ -83,10 +86,10 @@ struct FileEntry {
  * @param[out] error a return location for a GError [optional]
  * @return true if matching
  */
-inline bool FileEntry_isvalid_weak (
-    const struct FileEntry *entry, GError **error) {
+C_INLINE(bool FileEntry_isvalid_weak (
+    const struct FileEntry *entry, GError **error), {
   return FileStat_isvalid_path(&entry->stat_, entry->path, error);
-}
+})
 
 /**
  * @memberof FileEntry
@@ -126,5 +129,7 @@ int FileEntry_init (
     struct FileEntry *entry, char *path,
     GStatBuf *sb, FileHash hash, GError **error);
 
+
+END_C_DECLS
 
 #endif /* DFCC_FILE_ENTRY_H */

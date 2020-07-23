@@ -8,6 +8,8 @@
 
 #include "spawn/_hookedprocessgroupid.h"
 
+BEGIN_C_DECLS
+
 
 //! @memberof HookFsServer
 #define HOOKFS_READ (0u)
@@ -41,5 +43,7 @@ int HookFsServer_init (
   HookFsServerFileTranslator translator, HookFsServerProcessResolver resolver,
   GError **error);
 
+
+END_C_DECLS
 
 #endif /* DFCC_SPAWN_HOOKFS_SERVER_H */

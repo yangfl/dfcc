@@ -6,6 +6,10 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
+#include "common/cdecls.h"
+
+BEGIN_C_DECLS
+
 
 /**
  * @ingroup File
@@ -29,7 +33,7 @@ struct FileStat {
  */
 inline bool FileStat_isvalid_stat (
     const struct FileStat *stat_, const GStatBuf *sb) {
-  return stat_->size == sb->st_size && stat_->mtime >= sb->st_mtime;
+  return stat_->size == (unsigned) sb->st_size && stat_->mtime >= sb->st_mtime;
 }
 
 /**
@@ -80,5 +84,7 @@ int FileStat_init_from_stat (struct FileStat *stat_, GStatBuf *sb);
  */
 int FileStat_init_from_path (struct FileStat *stat_, char *path, GError **error);
 
+
+END_C_DECLS
 
 #endif /* DFCC_FILE_STAT_H */

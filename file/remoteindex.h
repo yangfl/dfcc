@@ -3,15 +3,16 @@
 
 #include <gmodule.h>
 
-#include "common/broadcast.h"
+#include "common/cdecls.h"
 #include "file/entry.h"
+
+BEGIN_C_DECLS
 
 
 //! @ingroup File
 struct RemoteFileIndex {
   GHashTable *table;
   GRWLock rwlock;
-  struct Broadcast sta;
 };
 
 
@@ -20,9 +21,6 @@ bool RemoteFileIndex_add (
     struct RemoteFileIndex *index, struct FileTag *tag, bool force);
 //! @memberof RemoteFileIndex
 struct FileTag *RemoteFileIndex_get (
-    struct RemoteFileIndex *index, const char* path);
-//! @memberof RemoteFileIndex
-struct FileTag *RemoteFileIndex_try_get (
     struct RemoteFileIndex *index, const char* path);
 /**
  * @memberof RemoteFileIndex
@@ -47,5 +45,7 @@ void RemoteFileIndex_free (void *index);
  */
 int RemoteFileIndex_init (struct RemoteFileIndex *index);
 
+
+END_C_DECLS
 
 #endif /* DFCC_FILE_REMOTE_INDEX_H */

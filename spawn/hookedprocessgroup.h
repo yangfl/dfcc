@@ -13,13 +13,15 @@
 #include "spawn/hookedprocess.h"
 #include "spawn/hookfsserver.h"
 
+BEGIN_C_DECLS
+
 
 /**
  * @ingroup Spawn
  * @brief Contains the information of HookedProcessGroup.
  */
 struct HookedProcessController {
-  struct HookFsServer;
+  struct HookFsServer ANON_MEMBER;
   /// Hash table mapping HookedProcessGroupID to HookedProcessGroup.
   GHashTable *table;
   /// Lock for `table`.
@@ -177,5 +179,7 @@ int HookedProcessGroup_init (
   struct HookedProcessGroup *group, HookedProcessGroupID hgid,
   struct HookedProcessController *controller);
 
+
+END_C_DECLS
 
 #endif /* DFCC_SPAWN_HOOKED_SUBPROCESS_GROUP_H */

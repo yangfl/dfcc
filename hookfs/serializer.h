@@ -46,7 +46,7 @@ enum {
 
 __attribute__((__packed__))
 struct Message {
-  unsigned char type;
+  uint8_t type;
   uint64_t num;
 };
 
@@ -103,15 +103,15 @@ ssize_t serialize_strv (struct Serializer *serdes, char * const *data);
 
 //! @memberof Serializer
 inline ssize_t serialize_end (struct Serializer *serdes) {
-  const unsigned char end = MESSAGE_END;
+  const uint8_t end = MESSAGE_END;
   return Serializer_write(serdes, &end, sizeof(end));
 }
 
-#define fortoken(t, serdes, err) for (unsigned char t; t = deserialize_next(serdes, err);)
+#define fortoken(t, serdes, err) for (uint8_t t; t = deserialize_next(serdes, err);)
 
 //! @memberof Serializer
 inline char deserialize_next (struct Serializer *serdes, int *err) {
-  unsigned char type;
+  uint8_t type;
   ssize_t ret = Serializer_read(serdes, &type, sizeof(type));
   should (ret >= 0) otherwise {
     *err = (int) ret;
@@ -120,7 +120,7 @@ inline char deserialize_next (struct Serializer *serdes, int *err) {
 }
 
 //! @memberof Serializer
-inline ssize_t deserialize_length (struct Serializer *serdes, unsigned char type) {
+inline ssize_t deserialize_length (struct Serializer *serdes, uint8_t type) {
   switch (type) {
     case MESSAGE_NUMERICAL:
       return sizeof(uint64_t);

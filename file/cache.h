@@ -1,14 +1,15 @@
 #ifndef DFCC_FILE_CACHE_H
 #define DFCC_FILE_CACHE_H
 
-#include <stdatomic.h>
 #include <stdbool.h>
 
 #include <glib.h>
 #include <gmodule.h>
 
-#include "common/broadcast.h"
-#include "file/entry.h"
+#include "common/cdecls.h"
+#include "cacheentry.h"
+
+BEGIN_C_DECLS
 
 
 /**
@@ -21,9 +22,6 @@
 inline bool FileTag_is_cache (const struct FileTag *tag) {
   return !g_path_is_absolute(tag->path);
 }
-
-
-struct CacheEntry;
 
 
 /**
@@ -41,8 +39,6 @@ struct Cache {
   GHashTable *index;
   /// Lock for Cache.index.
   GRWLock rwlock;
-
-  struct Broadcast sta;
 
   /// The base directory to store cache files.
   const char *cache_dir;
@@ -88,16 +84,24 @@ bool Cache_verify (
     struct Cache *cache, struct CacheEntry *entry, GError **error);
 /**
  * @memberof Cache
+ * @brief Looks up a hash in memory only.
+ *
+ * @param cache a Cache
+ * @param hash the FileHash to look up
+ * @param[out] error a return location for a GError [optional]
+ * @return the associated CacheEntry, or NULL if error happened [transfer-none]
+ */
+struct CacheEntry *Cache_try_get (struct Cache *cache, FileHash hash);
+/**
+ * @memberof Cache
  * @brief Looks up a hash in a Cache.
  *
  * @param cache a Cache
  * @param hash the FileHash to look up
  * @param[out] error a return location for a GError [optional]
- * @return the associated FileEntry, or NULL if error happened [transfer-none]
+ * @return the associated CacheEntry, or NULL if error happened [transfer-none]
  */
-struct FileEntry *Cache_get (
-    struct Cache *cache, FileHash hash, GError **error);
-struct FileEntry *Cache_try_get (
+struct CacheEntry *Cache_get (
     struct Cache *cache, FileHash hash, GError **error);
 /**
  * @memberof Cache
@@ -107,9 +111,9 @@ struct FileEntry *Cache_try_get (
  * @param buf the data buf
  * @param size length of `buf`
  * @param[out] error a return location for a GError [optional]
- * @return the associated FileEntry, or NULL if error happened [transfer-none]
+ * @return the associated CacheEntry, or NULL if error happened [transfer-none]
  */
-struct FileEntry *Cache_index_buf (
+struct CacheEntry *Cache_index_buf (
     struct Cache *cache, const char *buf, size_t size, GError **error);
 /**
  * @memberof Cache
@@ -120,9 +124,9 @@ struct FileEntry *Cache_index_buf (
  * @param path path to a file
  * @param[out] added whether the file `path` has just added into database
  * @param[out] error a return location for a GError [optional]
- * @return the associated FileEntry, or NULL if error happened [transfer-none]
+ * @return the associated CacheEntry, or NULL if error happened [transfer-none]
  */
-struct FileEntry *Cache_index_path (
+struct CacheEntry *Cache_index_path (
     struct Cache *cache, const char *path, bool *added, GError **error);
 /**
  * @memberof Cache
@@ -142,5 +146,7 @@ void Cache_destroy (struct Cache *cache);
  */
 int Cache_init (struct Cache *cache, const char *cache_dir, bool no_verify_cache);
 
+
+END_C_DECLS
 
 #endif /* DFCC_FILE_CACHE_H */

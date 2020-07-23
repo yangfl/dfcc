@@ -10,6 +10,8 @@
 
 #include <glib.h>
 
+BEGIN_C_DECLS
+
 
 //! @ingroup Spawn
 extern GQuark DFCC_SPAWN_ERROR;
@@ -93,5 +95,7 @@ int Process_init (
   struct Process *p, gchar **argv, gchar **envp, const char *selfpath,
   ProcessExitCallback onexit, void *userdata, GError **error);
 
+
+END_C_DECLS
 
 #endif /* DFCC_SPAWN_SUBPROCESS_H */

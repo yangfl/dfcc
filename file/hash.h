@@ -1,6 +1,7 @@
 #ifndef DFCC_FILE_HASH_H
 #define DFCC_FILE_HASH_H
 
+#include <stdio.h>
 #include <string.h>
 
 #include <glib.h>
@@ -8,6 +9,8 @@
 
 #include "common/hexstring.h"
 #include "common/macro.h"
+
+BEGIN_C_DECLS
 
 
 /**
@@ -50,22 +53,6 @@ typedef unsigned long long FileHash;
 
 /**
  * @memberof FileHash
- * @brief Convert `hash` to its printable representation into a buffer.
- *
- * @param hash a FileHash
- * @param[out] s a buffer of length at least @ref FileHash_STRLEN [nullable]
- * @return `s` if non-null, otherwise a newly-allocated buffer [transfer-full]
- */
-inline char *FileHash_to_buf (FileHash hash, char s[FileHash_STRLEN]) {
-  if (s == NULL) {
-    s = g_malloc(FileHash_STRLEN);
-  }
-  buf2hex(s, &hash, sizeof(hash));
-  return s;
-}
-
-/**
- * @memberof FileHash
  * @brief Convert `hash` to its printable representation into a string.
  *
  * @param hash a FileHash
@@ -74,10 +61,27 @@ inline char *FileHash_to_buf (FileHash hash, char s[FileHash_STRLEN]) {
  */
 inline char *FileHash_to_string (FileHash hash, char s[FileHash_STRLEN + 1]) {
   if (s == NULL) {
-    s = g_malloc(FileHash_STRLEN + 1);
+    s = g_new(char, FileHash_STRLEN + 1);
   }
-  FileHash_to_buf(hash, s);
-  s[FileHash_STRLEN] = '\0';
+  snprintf(s, FileHash_STRLEN + 1, "%016llX", hash);
+  return s;
+}
+
+/**
+ * @memberof FileHash
+ * @brief Convert `hash` to its printable representation into a buffer.
+ *
+ * @param hash a FileHash
+ * @param[out] s a buffer of length at least @ref FileHash_STRLEN [nullable]
+ * @return `s` if non-null, otherwise a newly-allocated buffer [transfer-full]
+ */
+inline char *FileHash_to_buf (FileHash hash, char s[FileHash_STRLEN]) {
+  if (s == NULL) {
+    s = g_new(char, FileHash_STRLEN);
+  }
+  char str[FileHash_STRLEN + 1];
+  FileHash_to_string(hash, str);
+  memcpy(s, str, FileHash_STRLEN);
   return s;
 }
 
@@ -87,12 +91,12 @@ inline char *FileHash_to_string (FileHash hash, char s[FileHash_STRLEN + 1]) {
  *
  * @param hash a FileHash
  * @param s the string
- * @return 0 if success, otherwize nonzero
+ * @return nonzero if success, otherwize 0
  */
 inline FileHash FileHash_from_string (const char *s) {
   char *s_end;
   FileHash hash = strtoull(s, &s_end, 16);
-  if unlikely (s_end - s < FileHash_STRLEN) {
+  if unlikely (s + FileHash_STRLEN > s_end) {
     return 0;
   }
   return hash;
@@ -126,5 +130,7 @@ inline FileHash FileHash_from_buf (const void* buf, size_t size) {
  */
 FileHash FileHash_from_file (const char* path, GError **error);
 
+
+END_C_DECLS
 
 #endif /* DFCC_FILE_HASH_H */
