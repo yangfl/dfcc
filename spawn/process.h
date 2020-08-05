@@ -19,7 +19,8 @@ extern GQuark DFCC_SPAWN_ERROR;
 
 struct Process;
 //! @memberof Process
-typedef void (*ProcessExitCallback) (struct Process *);
+typedef void (*ProcessOnchangeCallback) (void *, int);
+#define PROCESS_STATUS_EXIT 0
 
 
 /**
@@ -39,16 +40,28 @@ struct Process {
 
   //! Whether the process has stopped.
   bool stopped;
-  //! Mutex for events.
-  mtx_t mtx;
   //! Exit error if any.
   GError *error;
-  //! Callback when finish.
-  ProcessExitCallback onexit;
+  //! Mutex for events.
+  mtx_t mtx;
+  //! Callback when process status changed.
+  ProcessOnchangeCallback onchange;
   //! User data.
   void *userdata;
 };
 
+
+/**
+ * @memberof Process
+ * @brief Dispacth onchange event.
+ *
+ * @param p a Process
+ */
+inline void Process_onchange (struct Process *p, int status) {
+  if (p->onchange != NULL) {
+    p->onchange(p, status);
+  }
+}
 
 /**
  * @memberof Process
@@ -85,7 +98,7 @@ void Process_destroy (struct Process *p);
  *             [array zero-terminated=1][optional]
  * @param selfpath path to be avoided when searching `argv[0]` in `PATH`
  *                 [optional]
- * @param onexit Callback when process exits [optional]
+ * @param onchange Callback when process exits [optional]
  * @param userdata User data [optional]
  * @param[out] error a return location for a GError [optional]
  * @return the exit status of the spawned process if synchronously, otherwise 0
@@ -93,7 +106,7 @@ void Process_destroy (struct Process *p);
  */
 int Process_init (
   struct Process *p, gchar **argv, gchar **envp, const char *selfpath,
-  ProcessExitCallback onexit, void *userdata, GError **error);
+  ProcessOnchangeCallback onchange, void *userdata, GError **error);
 
 
 END_C_DECLS

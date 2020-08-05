@@ -9,7 +9,49 @@
 
 
 extern inline struct HookedProcessOutput *HookedProcessOutput_new (
-    gchar *path, int mode, GError **error);
+  gchar *path, int mode, GError **error);
+
+
+/**
+ * @memberof HookedProcess
+ * @brief Callback when a compiler process changes its status.
+ *
+ * @param spawn a Process
+ * @param userdata pointer to a HookedProcessGroup
+ */
+static void HookedProcess_onchange (void *p_, int status) {
+  struct HookedProcess *p = (struct HookedProcess *) p_;
+  bool mask_event = false;
+
+  switch (status) {
+    case PROCESS_STATUS_EXIT:
+      p->group->manager->n_available++;
+      break;
+    case HOOKEDPROCESS_FILE_MISSING:
+      break;
+      // todo
+    case HOOKEDPROCESS_OUTPUT: {
+      mask_event = true;
+      char *path = g_strdup(p->path);
+      GError *error = NULL;
+      struct HookedProcessOutput *output = HookedProcessOutput_new(path, p->mode, &error);
+      should (output != NULL) otherwise {
+        g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING, "Cannot create output file `%s`", path);
+        g_error_free(error);
+        g_free(path);
+        break;
+      }
+      g_hash_table_insert(p->outputs, output->path, output);
+      break;
+    }
+    default:
+      g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_WARNING, "Unknown status %d", status);
+  }
+
+  if (!mask_event && p->onchange_hooked != NULL) {
+    p->onchange_hooked(p, status);
+  }
+}
 
 
 void HookedProcessOutput_destroy (struct HookedProcessOutput *output) {
@@ -63,7 +105,7 @@ void HookedProcess_free (void *p) {
 
 int HookedProcess_init (
     struct HookedProcess *p, gchar **argv, gchar **envp,
-    HookedProcessExitCallback onexit, void *userdata,
+    ProcessOnchangeCallback onchange, void *userdata,
     struct HookedProcessGroup *group, GError **error) {
   should (g_file_test(
       group->manager->hookfs, G_FILE_TEST_EXISTS)) otherwise {
@@ -90,13 +132,13 @@ int HookedProcess_init (
   envp_hooked = g_environ_setenv(envp_hooked, "HOOKFS_SOCK_PATH",
                                  group->manager->socket_path, TRUE);
 
-  p->onexit_hooked = onexit;
+  p->onchange_hooked = onchange;
   p->outputs = g_hash_table_new_full(
     g_str_hash, g_str_equal, NULL, HookedProcessOutput_free);
 
   int ret = Process_init(
     (struct Process *) p, argv, envp_hooked, group->manager->selfpath,
-    HookedProcessGroup_onexit, userdata, error);
+    HookedProcess_onchange, userdata, error);
   g_strfreev(envp_hooked);
   return_if_fail(ret == 0) ret;
 
@@ -105,11 +147,11 @@ int HookedProcess_init (
 
 
 struct HookedProcess *HookedProcess_new (
-    gchar **argv, gchar **envp, HookedProcessExitCallback onexit,
+    gchar **argv, gchar **envp, ProcessOnchangeCallback onchange,
     void *userdata, struct HookedProcessGroup *group, GError **error) {
   struct HookedProcess *p = g_new(struct HookedProcess, 1);
   should (HookedProcess_init(
-      p, argv, envp, onexit, userdata, group, error
+      p, argv, envp, onchange, userdata, group, error
   ) == 0) otherwise {
     g_free(p);
     return NULL;

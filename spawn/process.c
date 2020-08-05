@@ -17,38 +17,26 @@ static void __attribute__ ((constructor)) DFCC_SPAWN_ERROR_init (void) {
 }
 
 
+extern inline void Process_onchange (struct Process *p, int status);
+
+
 static void Process_child_watch_cb (GPid pid, gint status, gpointer user_data) {
   struct Process *p = (struct Process *) user_data;
 
-  GError *error = NULL;
-  should (mtx_lock_e(&p->mtx, &error) == thrd_success) otherwise {
-    g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_ERROR,
-          "%s: %s", __func__, error->message);
-    g_error_free(error);
-  }
+  CRITICAL_SECTIONS_START(&p->mtx, event);
 
   p->stopped = true;
-
   if (g_spawn_check_exit_status(status, &p->error)) {
     g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
           "Child %" G_PID_FORMAT " exited normally", pid);
   } else {
-    g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
+    g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_INFO,
           "Child %" G_PID_FORMAT " exited abnormally: %s",
           pid, p->error->message);
   }
+  Process_onchange(p, PROCESS_STATUS_EXIT);
 
-  if (p->onexit != NULL) {
-    p->onexit(p);
-  }
-
-  if likely (error == NULL) {
-    should (mtx_unlock_e(&p->mtx, &error) == thrd_success) otherwise {
-      g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_ERROR,
-            "%s: %s", __func__, error->message);
-      g_error_free(error);
-    }
-  }
+  CRITICAL_SECTIONS_END(&p->mtx, event);
 }
 
 
@@ -142,7 +130,7 @@ static char *Process__search_executable (
 
 int Process_init (
     struct Process *p, gchar **argv, gchar **envp, const char *selfpath,
-    ProcessExitCallback onexit, void *userdata, GError **error) {
+    ProcessOnchangeCallback onchange, void *userdata, GError **error) {
   if (p != NULL) {
     return_if_fail(
       mtx_init_e(&p->mtx, mtx_plain, error) == thrd_success
@@ -199,7 +187,7 @@ int Process_init (
 
       p->stopped = false;
       p->error = NULL;
-      p->onexit = onexit;
+      p->onchange = onchange;
       p->userdata = userdata;
     }
   }

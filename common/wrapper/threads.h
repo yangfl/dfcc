@@ -7,6 +7,7 @@
  * @{
  */
 
+#include <stdbool.h>
 #include <threads.h>
 
 #include <glib.h>
@@ -14,8 +15,6 @@
 #include "common/macro.h"
 #include "errno.h"
 
-
-void threads_set_error (GError **error, const char *format);
 
 #define WRAP_THREADS_GERROR(type, func, params, args, test, msg) \
 inline type func ## _e params { \
@@ -50,6 +49,27 @@ WRAP_THREADS_GERROR(
   (cond, mutex), == thrd_success, "Failed to wait condition")
 
 #undef WRAP_THREADS_GERROR
+
+
+#define CRITICAL_SECTIONS_START(mutex, name) \
+  bool __critical_ ## name = true; \
+  { \
+    GError *error = NULL; \
+    should (mtx_lock_e(&p->mtx, &error) == thrd_success) otherwise { \
+      __critical_ ## name = false; \
+      g_log("threads", G_LOG_LEVEL_ERROR, "%s: %s", __func__, error->message); \
+      g_error_free(error); \
+    } \
+  }
+
+#define CRITICAL_SECTIONS_END(mutex, name) \
+  if (__critical_ ## name) { \
+    GError *error = NULL; \
+    should (mtx_unlock_e(&p->mtx, &error) == thrd_success) otherwise { \
+      g_log("threads", G_LOG_LEVEL_ERROR, "%s: %s", __func__, error->message); \
+      g_error_free(error); \
+    } \
+  }
 
 
 /**@}*/

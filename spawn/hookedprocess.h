@@ -6,8 +6,8 @@
 #include "file/cache.h"
 #include "file/hash.h"
 #include "file/remoteindex.h"
-#include "spawn/hookedprocessgroup.h"
-#include "spawn/process.h"
+#include "hookedprocessgroup.h"
+#include "process.h"
 
 BEGIN_C_DECLS
 
@@ -47,8 +47,7 @@ int HookedProcessOutput_init (
 //! @memberof HookedProcessOutput
 inline struct HookedProcessOutput *HookedProcessOutput_new (
     gchar *path, int mode, GError **error) {
-  struct HookedProcessOutput *output =
-    g_malloc(sizeof(struct HookedProcessOutput));
+  struct HookedProcessOutput *output = g_new(struct HookedProcessOutput, 1);
   should (HookedProcessOutput_init(
       output, path, mode, error) == 0) otherwise {
     g_free(output);
@@ -58,9 +57,8 @@ inline struct HookedProcessOutput *HookedProcessOutput_new (
 }
 
 
-struct HookedProcess;
-//! @memberof Process
-typedef void (*HookedProcessExitCallback) (struct HookedProcess *);
+#define HOOKEDPROCESS_FILE_MISSING 1
+#define HOOKEDPROCESS_OUTPUT 2
 
 
 /**
@@ -71,9 +69,10 @@ typedef void (*HookedProcessExitCallback) (struct HookedProcess *);
 struct HookedProcess {
   struct Process ANON_MEMBER;
   struct HookedProcessGroup *group;
+  ProcessOnchangeCallback onchange_hooked;
+
   GHashTable *outputs;
-  HookedProcessExitCallback onexit_hooked;
-  const char *missing_path;
+  const char *path;
   int mode;
 };
 
@@ -105,7 +104,7 @@ void HookedProcess_free (void *p);
  * @param envp compiler's environment, or NULL to inherit parent's
  *             [array zero-terminated=1][optional]
  * @param selfpath path to the executable of `dfcc`
- * @param onexit Callback when process exits [optional]
+ * @param onchange Callback when process exits [optional]
  * @param userdata User data [optional]
  * @param group a HookedProcessGroup
  * @param[out] error a return location for a GError [optional]
@@ -113,7 +112,7 @@ void HookedProcess_free (void *p);
 */
 int HookedProcess_init (
   struct HookedProcess *p, gchar **argv, gchar **envp,
-  HookedProcessExitCallback onexit, void *userdata,
+  ProcessOnchangeCallback onchange, void *userdata,
   struct HookedProcessGroup *group, GError **error);
 /**
  * @memberof HookedProcess
@@ -124,14 +123,14 @@ int HookedProcess_init (
  * @param envp compiler's environment, or NULL to inherit parent's
  *             [array zero-terminated=1][optional]
  * @param selfpath path to the executable of `dfcc`
- * @param onexit Callback when process exits [optional]
+ * @param onchange Callback when process exits [optional]
  * @param userdata User data [optional]
  * @param group a HookedProcessGroup
  * @param[out] error a return location for a GError [optional]
  * @return a HookedProcess [transfer-full]
 */
 struct HookedProcess *HookedProcess_new (
-  gchar **argv, gchar **envp, HookedProcessExitCallback onexit, void *userdata,
+  gchar **argv, gchar **envp, ProcessOnchangeCallback onchange, void *userdata,
   struct HookedProcessGroup *group, GError **error);
 
 

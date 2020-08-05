@@ -18,15 +18,12 @@ BEGIN_C_DECLS
 
 
 //! @memberof HookFsServer
-typedef char *(*HookFsServerFileTranslator) (
-  struct HookedProcess *p, const char *path, bool dierction_read, int mode);
 typedef struct HookedProcess *(*HookFsServerProcessResolver) (
   void *self, HookedProcessGroupID hgid, GPid pid);
 
 
 //! @ingroup Spawn
 struct HookFsServer {
-  HookFsServerFileTranslator translator;
   HookFsServerProcessResolver resolver;
   GSocketService *service;
   char *socket_path;
@@ -40,8 +37,7 @@ void HookFsServer_destroy (struct HookFsServer *server);
 //! @memberof HookFsServer
 int HookFsServer_init (
   struct HookFsServer *server, const char *socket_path,
-  HookFsServerFileTranslator translator, HookFsServerProcessResolver resolver,
-  GError **error);
+  HookFsServerProcessResolver resolver, GError **error);
 
 
 END_C_DECLS

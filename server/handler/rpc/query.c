@@ -36,7 +36,8 @@ static void Server_rpc_query_response (
 }
 
 
-static void Server_rpc_query_callback (struct HookedProcess *p) {
+static void Server_rpc_query_callback (void *p_, int status) {
+  struct HookedProcess *p = (struct HookedProcess *) p_;
   struct QueryCallbackContext *cb_ctx =
     (struct QueryCallbackContext *) p->userdata;
   Server_rpc_query_response(
@@ -51,20 +52,17 @@ void Server_rpc_query (
   GPid pid;
   gboolean nonblocking;
   g_variant_get(param, DFCC_RPC_QUERY_REQUEST_SIGNATURE, &pid, &nonblocking);
+
   struct HookedProcess *p = HookedProcessGroup_lookup(
     (struct HookedProcessGroup *) session, pid);
   should (p != NULL) otherwise {
     soup_message_set_status(msg, SOUP_STATUS_NOT_FOUND);
-    soup_xmlrpc_message_set_fault(msg, 0, "JID not found");
+    soup_xmlrpc_message_set_fault(msg, 0, "JID %d not found", pid);
     return;
   }
 
-  GError *error = NULL;
-  should (mtx_lock_e(&p->mtx, &error) == thrd_success) otherwise {
-    g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_ERROR,
-          "%s: %s", __func__, error->message);
-    g_error_free(error);
-  }
+  CRITICAL_SECTIONS_START(&p->mtx, event);
+
   if (p->stopped || nonblocking) {
     Server_rpc_query_response(server_ctx, session, msg, p);
   } else {
@@ -73,16 +71,11 @@ void Server_rpc_query (
     cb_ctx->session = session;
     cb_ctx->msg = msg;
     p->userdata = cb_ctx;
-    p->onexit_hooked = Server_rpc_query_callback;
+    p->onchange_hooked = Server_rpc_query_callback;
     soup_server_pause_message(server_ctx->server, msg);
   }
-  if likely (error == NULL) {
-    should (mtx_unlock_e(&p->mtx, &error) == thrd_success) otherwise {
-      g_log(DFCC_SERVER_NAME, G_LOG_LEVEL_ERROR,
-            "%s: %s", __func__, error->message);
-      g_error_free(error);
-    }
-  }
+
+  CRITICAL_SECTIONS_END(&p->mtx, event);
 
   g_variant_unref(param);
 }

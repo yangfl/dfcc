@@ -6,7 +6,105 @@
 #include "common/macro.h"
 #include "common/atomiccount.h"
 #include "file/cache.h"
+#include "log.h"
 #include "hookedprocessgroup.h"
+
+
+struct HookedProcess *HookedProcessGroup_lookup (
+    struct HookedProcessGroup *group, GPid pid) {
+  GRWLockReaderLocker *locker =
+    g_rw_lock_reader_locker_new(&group->rwlock);
+  struct HookedProcess *p = g_hash_table_lookup(group->table, &pid);
+  g_rw_lock_reader_locker_free(locker);
+  return_if_fail(p != NULL) NULL;
+  return p;
+}
+
+
+/**
+ * @memberof HookedProcessGroup
+ * @brief Inserts a Job into a HookedProcessGroup.
+ *
+ * @param group a HookedProcessGroup
+ * @param job a Job [nullable]
+ * @param pending whether the job slot has been reserved
+ */
+static void HookedProcessGroup_insert (
+    struct HookedProcessGroup *group, struct HookedProcess *p,
+    bool pending) {
+  should (p != NULL) otherwise {
+    if (pending) {
+      group->manager->n_available++;
+    }
+    return;
+  }
+
+  if (!pending) {
+    group->manager->n_available--;
+  }
+
+  g_rw_lock_writer_lock(&group->rwlock);
+  g_hash_table_insert(group->table, &p->pid, p);
+  g_rw_lock_writer_unlock(&group->rwlock);
+}
+
+
+bool HookedProcessGroup_reserve (struct HookedProcessGroup *group) {
+  return count_dec(&group->manager->n_available);
+}
+
+
+struct HookedProcess *HookedProcessGroup_new_job (
+    struct HookedProcessGroup *group, gchar **argv, gchar **envp,
+    ProcessOnchangeCallback onchange, void *userdata, GError **error) {
+  should (HookedProcessGroup_reserve(group)) otherwise {
+    g_set_error_literal(
+      error, DFCC_SPAWN_ERROR, SOUP_STATUS_SERVICE_UNAVAILABLE, "Server full");
+    return NULL;
+  }
+  struct HookedProcess *p = HookedProcess_new(
+    argv, envp, onchange, userdata, group, error);
+  return_if_fail(p != NULL) NULL;
+  HookedProcessGroup_insert(group, p, true);
+  return p;
+}
+
+
+void HookedProcessGroup_destroy (struct HookedProcessGroup *group) {
+  g_rw_lock_writer_lock(&group->rwlock);
+  g_hash_table_destroy(group->table);
+  g_rw_lock_writer_unlock(&group->rwlock);
+  g_rw_lock_clear(&group->rwlock);
+  RemoteFileIndex_destroy(&group->file_index);
+}
+
+
+void HookedProcessGroup_virtual_destroy (void *group) {
+  ((struct HookedProcessGroup *) group)->destructor(group);
+}
+
+
+void HookedProcessGroup_free (void *group) {
+  HookedProcessGroup_virtual_destroy(group);
+  g_free(group);
+}
+
+
+int HookedProcessGroup_init (
+    struct HookedProcessGroup *group, HookedProcessGroupID hgid,
+    struct HookedProcessGroupManager *manager) {
+  return_if_fail(RemoteFileIndex_init(&group->file_index) == 0) 1;
+
+  group->table = g_hash_table_new_full(
+    g_int_hash, g_int_equal, NULL, HookedProcess_free);
+  g_rw_lock_init(&group->rwlock);
+
+  group->hgid = hgid;
+  snprintf(group->s_hgid, sizeof(group->s_hgid), "%x", group->hgid);
+  group->manager = manager;
+  group->destructor = (void (*) (void *)) HookedProcessGroup_destroy;
+  return 0;
+}
 
 
 struct HookedProcessGroup *HookedProcessGroupManager_lookup (
@@ -73,111 +171,5 @@ int HookedProcessGroupManager_init (
   manager->debug = 1; // temp
   manager->selfpath = selfpath;
   manager->hookfs = hookfs;
-  return 0;
-}
-
-
-struct HookedProcess *HookedProcessGroup_lookup (
-    struct HookedProcessGroup *group, GPid pid) {
-  GRWLockReaderLocker *locker =
-    g_rw_lock_reader_locker_new(&group->rwlock);
-  struct HookedProcess *p = g_hash_table_lookup(group->table, &pid);
-  g_rw_lock_reader_locker_free(locker);
-  return_if_fail(p != NULL) NULL;
-  return p;
-}
-
-
-void HookedProcessGroup_onexit (struct Process *p_) {
-  struct HookedProcess *p = (struct HookedProcess *) p_;
-  p->group->manager->n_available++;
-  if (p->onexit_hooked != NULL) {
-    p->onexit_hooked(p);
-  }
-}
-
-
-/**
- * @memberof HookedProcessGroup
- * @brief Inserts a Job into a HookedProcessGroup.
- *
- * @param group a HookedProcessGroup
- * @param job a Job [nullable]
- * @param pending whether the job slot has been reserved
- */
-static void HookedProcessGroup_insert (
-    struct HookedProcessGroup *group, struct HookedProcess *p,
-    bool pending) {
-  should (p != NULL) otherwise {
-    if (pending) {
-      group->manager->n_available++;
-    }
-    return;
-  }
-
-  if (!pending) {
-    group->manager->n_available--;
-  }
-
-  g_rw_lock_writer_lock(&group->rwlock);
-  g_hash_table_insert(group->table, &p->pid, p);
-  g_rw_lock_writer_unlock(&group->rwlock);
-}
-
-
-bool HookedProcessGroup_reserve (struct HookedProcessGroup *group) {
-  return count_dec(&group->manager->n_available);
-}
-
-
-struct HookedProcess *HookedProcessGroup_new_job (
-    struct HookedProcessGroup *group, gchar **argv, gchar **envp,
-    HookedProcessExitCallback onexit, void *userdata, GError **error) {
-  should (HookedProcessGroup_reserve(group)) otherwise {
-    g_set_error_literal(
-      error, DFCC_SPAWN_ERROR, SOUP_STATUS_SERVICE_UNAVAILABLE, "Server full");
-    return NULL;
-  }
-  struct HookedProcess *p = HookedProcess_new(
-    argv, envp, onexit, userdata, group, error);
-  return_if_fail(p != NULL) NULL;
-  HookedProcessGroup_insert(group, p, true);
-  return p;
-}
-
-
-void HookedProcessGroup_destroy (struct HookedProcessGroup *group) {
-  g_rw_lock_writer_lock(&group->rwlock);
-  g_hash_table_destroy(group->table);
-  g_rw_lock_writer_unlock(&group->rwlock);
-  g_rw_lock_clear(&group->rwlock);
-  RemoteFileIndex_destroy(&group->file_index);
-}
-
-
-void HookedProcessGroup_virtual_destroy (void *group) {
-  ((struct HookedProcessGroup *) group)->destructor(group);
-}
-
-
-void HookedProcessGroup_free (void *group) {
-  HookedProcessGroup_virtual_destroy(group);
-  g_free(group);
-}
-
-
-int HookedProcessGroup_init (
-    struct HookedProcessGroup *group, HookedProcessGroupID hgid,
-    struct HookedProcessGroupManager *manager) {
-  return_if_fail(RemoteFileIndex_init(&group->file_index) == 0) 1;
-
-  group->table = g_hash_table_new_full(
-    g_int_hash, g_int_equal, NULL, HookedProcess_free);
-  g_rw_lock_init(&group->rwlock);
-
-  group->hgid = hgid;
-  snprintf(group->s_hgid, sizeof(group->s_hgid), "%x", group->hgid);
-  group->manager = manager;
-  group->destructor = (void (*) (void *)) HookedProcessGroup_destroy;
   return 0;
 }

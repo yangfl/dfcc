@@ -211,8 +211,7 @@ gboolean HookFsServer_incoming_callback (
 
 int HookFsServer_init (
     struct HookFsServer *server, const char *socket_path,
-    HookFsServerFileTranslator translator, HookFsServerProcessResolver resolver,
-    GError **error) {
+    HookFsServerProcessResolver resolver, GError **error) {
   int ret = 0;
 
   server->socket_path = g_strdup_printf(socket_path, getpid());
@@ -230,7 +229,6 @@ int HookFsServer_init (
       break;
     }
 
-    server->translator = translator;
     server->resolver = resolver;
 
     g_log(DFCC_SPAWN_NAME, G_LOG_LEVEL_DEBUG,
